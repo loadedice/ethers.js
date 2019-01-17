@@ -16,8 +16,8 @@ export enum UnicodeNormalizationForm {
     NFC      = 'NFC',
     NFD      = 'NFD',
     NFKC     = 'NFKC',
-    NFKD     = 'NFKD'
-};
+    NFKD     = 'NFKD',
+}
 
 // http://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
 export function toUtf8Bytes(str: string, form: UnicodeNormalizationForm = UnicodeNormalizationForm.current): Uint8Array {
@@ -27,9 +27,9 @@ export function toUtf8Bytes(str: string, form: UnicodeNormalizationForm = Unicod
         str = str.normalize(form);
     }
 
-    var result = [];
-    for (var i = 0; i < str.length; i++) {
-        var c = str.charCodeAt(i);
+    const result = [];
+    for (let i = 0; i < str.length; i++) {
+        let c = str.charCodeAt(i);
 
         if (c < 0x80) {
             result.push(c);
@@ -40,7 +40,7 @@ export function toUtf8Bytes(str: string, form: UnicodeNormalizationForm = Unicod
 
         } else if ((c & 0xfc00) == 0xd800) {
             i++;
-            let c2 = str.charCodeAt(i);
+            const c2 = str.charCodeAt(i);
 
             if (i >= str.length || (c2 & 0xfc00) !== 0xdc00) {
                 throw new Error('invalid utf-8 string');
@@ -61,8 +61,7 @@ export function toUtf8Bytes(str: string, form: UnicodeNormalizationForm = Unicod
     }
 
     return arrayify(result);
-};
-
+}
 
 // http://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript#13691499
 export function toUtf8String(bytes: Arrayish, ignoreErrors?: boolean): string {
@@ -72,9 +71,9 @@ export function toUtf8String(bytes: Arrayish, ignoreErrors?: boolean): string {
     let i = 0;
 
     // Invalid bytes are ignored
-    while(i < bytes.length) {
+    while (i < bytes.length) {
 
-        var c = bytes[i++];
+        const c = bytes[i++];
         // 0xxx xxxx
         if (c >> 7 === 0) {
             result += String.fromCharCode(c);
@@ -126,13 +125,13 @@ export function toUtf8String(bytes: Arrayish, ignoreErrors?: boolean): string {
         let res = c & ((1 << (8 - extraLength - 1)) - 1);
 
         for (let j = 0; j < extraLength; j++) {
-            var nextChar = bytes[i];
+            const nextChar = bytes[i];
 
             // Invalid continuation byte
             if ((nextChar & 0xc0) != 0x80) {
                 res = null;
                 break;
-            };
+            }
 
             res = (res << 6) | (nextChar & 0x3f);
             i++;
@@ -176,7 +175,7 @@ export function toUtf8String(bytes: Arrayish, ignoreErrors?: boolean): string {
 export function formatBytes32String(text: string): string {
 
     // Get the bytes
-    let bytes = toUtf8Bytes(text);
+    const bytes = toUtf8Bytes(text);
 
     // Check we have room for null-termination
     if (bytes.length > 31) { throw new Error('bytes32 string must be less than 32 bytes'); }
@@ -186,7 +185,7 @@ export function formatBytes32String(text: string): string {
 }
 
 export function parseBytes32String(bytes: Arrayish): string {
-    let data = arrayify(bytes);
+    const data = arrayify(bytes);
 
     // Must be 32 bytes with a null-termination
     if (data.length !== 32) { throw new Error('invalid bytes32 - not 32 bytes long'); }

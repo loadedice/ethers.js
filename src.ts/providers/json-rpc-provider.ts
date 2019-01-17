@@ -34,7 +34,7 @@ function timer(timeout: number): Promise<any> {
 function getResult(payload: { error?: { code?: number, data?: any, message?: string }, result?: any }): any {
     if (payload.error) {
         // @TODO: not any
-        let error: any = new Error(payload.error.message);
+        const error: any = new Error(payload.error.message);
         error.code = payload.error.code;
         error.data = payload.error.data;
         throw error;
@@ -51,7 +51,7 @@ function getLowerCase(value: string): string {
 const _constructorGuard = {};
 
 export class JsonRpcSigner extends Signer {
-    readonly provider: JsonRpcProvider;
+    public readonly provider: JsonRpcProvider;
     private _index: number;
     private _address: string;
 
@@ -79,7 +79,7 @@ export class JsonRpcSigner extends Signer {
         }
     }
 
-    getAddress(): Promise<string> {
+    public getAddress(): Promise<string> {
         if (this._address) {
             return Promise.resolve(this._address);
         }
@@ -93,18 +93,18 @@ export class JsonRpcSigner extends Signer {
         });
     }
 
-    getBalance(blockTag?: BlockTag): Promise<BigNumber> {
+    public getBalance(blockTag?: BlockTag): Promise<BigNumber> {
         return this.provider.getBalance(this.getAddress(), blockTag);
     }
 
-    getTransactionCount(blockTag?: BlockTag): Promise<number> {
+    public getTransactionCount(blockTag?: BlockTag): Promise<number> {
         return this.provider.getTransactionCount(this.getAddress(), blockTag);
     }
 
-    sendUncheckedTransaction(transaction: TransactionRequest): Promise<string> {
+    public sendUncheckedTransaction(transaction: TransactionRequest): Promise<string> {
         transaction = shallowCopy(transaction);
 
-        let fromAddress = this.getAddress().then((address) => {
+        const fromAddress = this.getAddress().then((address) => {
             if (address) { address = address.toLowerCase(); }
             return address;
         });
@@ -113,17 +113,17 @@ export class JsonRpcSigner extends Signer {
         // wishes to use this, it is easy to specify explicitly, otherwise
         // we look it up for them.
         if (transaction.gasLimit == null) {
-            let estimate = shallowCopy(transaction);
+            const estimate = shallowCopy(transaction);
             estimate.from = fromAddress;
             transaction.gasLimit = this.provider.estimateGas(estimate);
         }
 
         return Promise.all([
             resolveProperties(transaction),
-            fromAddress
+            fromAddress,
         ]).then((results) => {
-            let tx = results[0];
-            let hexTx = JsonRpcProvider.hexlifyTransaction(tx);
+            const tx = results[0];
+            const hexTx = JsonRpcProvider.hexlifyTransaction(tx);
             hexTx.from = results[1];
             return this.provider.send('eth_sendTransaction', [ hexTx ]).then((hash) => {
                 return hash;
@@ -132,17 +132,17 @@ export class JsonRpcSigner extends Signer {
                     // See: JsonRpcProvider.sendTransaction (@TODO: Expose a ._throwError??)
                     if (error.responseText.indexOf('insufficient funds') >= 0) {
                         errors.throwError('insufficient funds', errors.INSUFFICIENT_FUNDS, {
-                            transaction: tx
+                            transaction: tx,
                         });
                     }
                     if (error.responseText.indexOf('nonce too low') >= 0) {
                         errors.throwError('nonce has already been used', errors.NONCE_EXPIRED, {
-                            transaction: tx
+                            transaction: tx,
                         });
                     }
                     if (error.responseText.indexOf('replacement transaction underpriced') >= 0) {
                         errors.throwError('replacement fee too low', errors.REPLACEMENT_UNDERPRICED, {
-                            transaction: tx
+                            transaction: tx,
                         });
                     }
                 }
@@ -151,7 +151,7 @@ export class JsonRpcSigner extends Signer {
         });
     }
 
-    sendTransaction(transaction: TransactionRequest): Promise<TransactionResponse> {
+    public sendTransaction(transaction: TransactionRequest): Promise<TransactionResponse> {
         return this.sendUncheckedTransaction(transaction).then((hash) => {
             return poll(() => {
                 return this.provider.getTransaction(hash).then((tx: TransactionResponse) => {
@@ -159,14 +159,14 @@ export class JsonRpcSigner extends Signer {
                     return this.provider._wrapTransaction(tx, hash);
                 });
             }, { onceBlock: this.provider }).catch((error: Error) => {
-                (<any>error).transactionHash = hash;
+                (error as any).transactionHash = hash;
                 throw error;
             });
         });
     }
 
-    signMessage(message: Arrayish | string): Promise<string> {
-        let data = ((typeof(message) === 'string') ? toUtf8Bytes(message): message);
+    public signMessage(message: Arrayish | string): Promise<string> {
+        const data = ((typeof(message) === 'string') ? toUtf8Bytes(message) : message);
         return this.getAddress().then((address) => {
 
             // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_sign
@@ -174,8 +174,8 @@ export class JsonRpcSigner extends Signer {
         });
     }
 
-    unlock(password: string): Promise<boolean> {
-        let provider = this.provider;
+    public unlock(password: string): Promise<boolean> {
+        const provider = this.provider;
 
         return this.getAddress().then(function(address) {
             return provider.send('personal_unlockAccount', [ address.toLowerCase(), password, null ]);
@@ -184,11 +184,46 @@ export class JsonRpcSigner extends Signer {
 }
 
 const allowedTransactionKeys: { [ key: string ]: boolean } = {
-    chainId: true, data: true, gasLimit: true, gasPrice:true, nonce: true, to: true, value: true
-}
+    chainId: true, data: true, gasLimit: true, gasPrice: true, nonce: true, to: true, value: true,
+};
 
 export class JsonRpcProvider extends BaseProvider {
-    readonly connection: ConnectionInfo;
+
+    // Convert an ethers.js transaction into a JSON-RPC transaction
+    //  - gasLimit => gas
+    //  - All values hexlified
+    //  - All numeric values zero-striped
+    // NOTE: This allows a TransactionRequest, but all values should be resolved
+    //       before this is called
+    public static hexlifyTransaction(transaction: TransactionRequest, allowExtra?: { [key: string]: boolean }): { [key: string]: string } {
+
+        // Check only allowed properties are given
+        const allowed = shallowCopy(allowedTransactionKeys);
+        if (allowExtra) {
+            for (const key in allowExtra) {
+                if (allowExtra[key]) { allowed[key] = true; }
+            }
+        }
+        checkProperties(transaction, allowed);
+
+        const result: { [key: string]: string } = {};
+
+        // Some nodes (INFURA ropsten; INFURA mainnet is fine) don't like leading zeros.
+        ['gasLimit', 'gasPrice', 'nonce', 'value'].forEach(function(key) {
+            if ((transaction as any)[key] == null) { return; }
+            const value = hexStripZeros(hexlify((transaction as any)[key]));
+            if (key === 'gasLimit') { key = 'gas'; }
+            result[key] = value;
+        });
+
+        ['from', 'to', 'data'].forEach(function(key) {
+            if ((transaction as any)[key] == null) { return; }
+            result[key] = hexlify((transaction as any)[key]);
+        });
+
+        return result;
+    }
+    public readonly connection: ConnectionInfo;
 
     private _pendingFilter: Promise<number>;
 
@@ -209,7 +244,7 @@ export class JsonRpcProvider extends BaseProvider {
         } else {
 
             // The network is unknown, query the JSON-RPC for it
-            let ready: Promise<Network> = new Promise((resolve, reject) => {
+            const ready: Promise<Network> = new Promise((resolve, reject) => {
                 setTimeout(() => {
                     this.send('net_version', [ ]).then((result) => {
                         return resolve(getNetwork(parseInt(result)));
@@ -228,7 +263,7 @@ export class JsonRpcProvider extends BaseProvider {
 
         if (typeof(url) === 'string') {
             this.connection = {
-                url: url
+                url,
             };
         } else {
             this.connection = url;
@@ -236,36 +271,36 @@ export class JsonRpcProvider extends BaseProvider {
 
     }
 
-    getSigner(addressOrIndex?: string | number): JsonRpcSigner {
+    public getSigner(addressOrIndex?: string | number): JsonRpcSigner {
         return new JsonRpcSigner(_constructorGuard, this, addressOrIndex);
     }
 
-    listAccounts(): Promise<Array<string>> {
-        return this.send('eth_accounts', []).then((accounts: Array<string>) => {
+    public listAccounts(): Promise<string[]> {
+        return this.send('eth_accounts', []).then((accounts: string[]) => {
             return accounts.map((a) => getAddress(a));
         });
     }
 
-    send(method: string, params: any): Promise<any> {
-        let request = {
-            method: method,
-            params: params,
+    public send(method: string, params: any): Promise<any> {
+        const request = {
+            method,
+            params,
             id: 42,
-            jsonrpc: "2.0"
+            jsonrpc: '2.0',
         };
 
         return fetchJson(this.connection, JSON.stringify(request), getResult).then((result) => {
             this.emit('debug', {
                 action: 'send',
-                request: request,
+                request,
                 response: result,
-                provider: this
+                provider: this,
             });
             return result;
         });
     }
 
-    perform(method: string, params: any): Promise<any> {
+    public perform(method: string, params: any): Promise<any> {
         switch (method) {
             case 'getBlockNumber':
                 return this.send('eth_blockNumber', []);
@@ -340,14 +375,14 @@ export class JsonRpcProvider extends BaseProvider {
 
     protected _startPending(): void {
         if (this._pendingFilter != null) { return; }
-        let self = this;
+        const self = this;
 
-        let pendingFilter: Promise<number> = this.send('eth_newPendingTransactionFilter', []);
+        const pendingFilter: Promise<number> = this.send('eth_newPendingTransactionFilter', []);
         this._pendingFilter = pendingFilter;
 
         pendingFilter.then(function(filterId) {
             function poll() {
-                self.send('eth_getFilterChanges', [ filterId ]).then(function(hashes: Array<string>) {
+                self.send('eth_getFilterChanges', [ filterId ]).then(function(hashes: string[]) {
                     if (self._pendingFilter != pendingFilter) { return null; }
 
                     let seq = Promise.resolve();
@@ -383,40 +418,5 @@ export class JsonRpcProvider extends BaseProvider {
 
     protected _stopPending(): void {
         this._pendingFilter = null;
-    }
-
-    // Convert an ethers.js transaction into a JSON-RPC transaction
-    //  - gasLimit => gas
-    //  - All values hexlified
-    //  - All numeric values zero-striped
-    // NOTE: This allows a TransactionRequest, but all values should be resolved
-    //       before this is called
-    static hexlifyTransaction(transaction: TransactionRequest, allowExtra?: { [key: string]: boolean }): { [key: string]: string } {
-
-        // Check only allowed properties are given
-        let allowed = shallowCopy(allowedTransactionKeys);
-        if (allowExtra) {
-            for (let key in allowExtra) {
-                if (allowExtra[key]) { allowed[key] = true; }
-            }
-        }
-        checkProperties(transaction, allowed);
-
-        let result: { [key: string]: string } = {};
-
-        // Some nodes (INFURA ropsten; INFURA mainnet is fine) don't like leading zeros.
-        ['gasLimit', 'gasPrice', 'nonce', 'value'].forEach(function(key) {
-            if ((<any>transaction)[key] == null) { return; }
-            let value = hexStripZeros(hexlify((<any>transaction)[key]));
-            if (key === 'gasLimit') { key = 'gas'; }
-            result[key] = value;
-        });
-
-        ['from', 'to', 'data'].forEach(function(key) {
-            if ((<any>transaction)[key] == null) { return; }
-            result[key] = hexlify((<any>transaction)[key]);
-        });
-
-        return result;
     }
 }

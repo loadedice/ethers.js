@@ -8,25 +8,23 @@ import { Provider } from './providers/abstract-provider';
 import { Arrayish } from './utils/bytes';
 import { TransactionRequest, TransactionResponse } from './providers/abstract-provider';
 
-
 export abstract class Signer {
-    readonly provider?: Provider;
 
-    abstract getAddress(): Promise<string>
-
-    abstract signMessage(message: Arrayish | string): Promise<string>;
-    abstract sendTransaction(transaction: TransactionRequest): Promise<TransactionResponse>;
+    public static isSigner(value: any): value is Signer {
+        return isType(value, 'Signer');
+    }
+    public readonly provider?: Provider;
 
     constructor() {
         setType(this, 'Signer');
     }
 
-    static isSigner(value: any): value is Signer {
-        return isType(value, 'Signer');
-    }
+    public abstract getAddress(): Promise<string>;
+
+    public abstract signMessage(message: Arrayish | string): Promise<string>;
+    public abstract sendTransaction(transaction: TransactionRequest): Promise<TransactionResponse>;
 
 //    readonly inherits: (child: any) => void;
 }
 
-//defineReadOnly(Signer, 'inherits', inheritable(Signer));
-
+// defineReadOnly(Signer, 'inherits', inheritable(Signer));

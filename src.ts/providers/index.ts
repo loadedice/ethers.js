@@ -23,11 +23,10 @@ import {
     Listener,
     TransactionReceipt,
     TransactionRequest,
-    TransactionResponse
+    TransactionResponse,
 } from './abstract-provider';
 
 import { AsyncSendable } from './web3-provider';
-
 
 ////////////////////////
 // Exports
@@ -38,7 +37,6 @@ export {
     // Abstract Providers (or Abstract-ish)
     Provider,
     BaseProvider,
-
 
     ///////////////////////
     // Concreate Providers
@@ -52,12 +50,10 @@ export {
 
     IpcProvider,
 
-
     ///////////////////////
     // Signer
 
     JsonRpcSigner,
-
 
     ///////////////////////
     // Types
@@ -72,6 +68,5 @@ export {
     TransactionRequest,
     TransactionResponse,
 
-    AsyncSendable
+    AsyncSendable,
 };
-

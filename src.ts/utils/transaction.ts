@@ -7,12 +7,11 @@ import { recoverAddress } from './secp256k1';
 
 import { getAddress } from './address';
 import { BigNumber, bigNumberify } from './bignumber';
-import { arrayify, hexlify, hexZeroPad, splitSignature, stripZeros, } from './bytes';
+import { arrayify, hexlify, hexZeroPad, splitSignature, stripZeros } from './bytes';
 import { keccak256 } from './keccak256';
 import { checkProperties, resolveProperties, shallowCopy } from './properties';
 
 import * as RLP from './rlp';
-
 
 ///////////////////////////////
 // Imported Types
@@ -25,7 +24,7 @@ import { Provider } from '../providers/abstract-provider';
 ///////////////////////////////
 // Exported Types
 
-export type UnsignedTransaction = {
+export interface UnsignedTransaction {
     to?: string;
     nonce?: number;
 
@@ -78,28 +77,28 @@ const transactionFields = [
 ];
 
 const allowedTransactionKeys: { [ key: string ]: boolean } = {
-    chainId: true, data: true, gasLimit: true, gasPrice:true, nonce: true, to: true, value: true
-}
+    chainId: true, data: true, gasLimit: true, gasPrice: true, nonce: true, to: true, value: true,
+};
 
 export function serialize(transaction: UnsignedTransaction, signature?: Arrayish | Signature): string {
     checkProperties(transaction, allowedTransactionKeys);
 
-    let raw: Array<string | Uint8Array> = [];
+    const raw: Array<string | Uint8Array> = [];
 
     transactionFields.forEach(function(fieldInfo) {
-        let value = (<any>transaction)[fieldInfo.name] || ([]);
+        let value = (transaction as any)[fieldInfo.name] || ([]);
         value = arrayify(hexlify(value));
 
         // Fixed-width field
         if (fieldInfo.length && value.length !== fieldInfo.length && value.length > 0) {
-            errors.throwError('invalid length for ' + fieldInfo.name, errors.INVALID_ARGUMENT, { arg: ('transaction' + fieldInfo.name), value: value });
+            errors.throwError('invalid length for ' + fieldInfo.name, errors.INVALID_ARGUMENT, { arg: ('transaction' + fieldInfo.name), value });
         }
 
         // Variable-width (with a maximum)
         if (fieldInfo.maxLength) {
             value = stripZeros(value);
             if (value.length > fieldInfo.maxLength) {
-                errors.throwError('invalid length for ' + fieldInfo.name, errors.INVALID_ARGUMENT, { arg: ('transaction' + fieldInfo.name), value: value });
+                errors.throwError('invalid length for ' + fieldInfo.name, errors.INVALID_ARGUMENT, { arg: ('transaction' + fieldInfo.name), value });
             }
         }
 
@@ -112,7 +111,7 @@ export function serialize(transaction: UnsignedTransaction, signature?: Arrayish
         raw.push('0x');
     }
 
-    let unsignedTransaction = RLP.encode(raw);
+    const unsignedTransaction = RLP.encode(raw);
 
     // Requesting an unsigned transation
     if (!signature) {
@@ -121,10 +120,10 @@ export function serialize(transaction: UnsignedTransaction, signature?: Arrayish
 
     // The splitSignature will ensure the transaction has a recoveryParam in the
     // case that the signTransaction function only adds a v.
-    let sig = splitSignature(signature);
+    const sig = splitSignature(signature);
 
     // We pushed a chainId and null r, s on for hashing only; remove those
-    let v = 27 + sig.recoveryParam
+    let v = 27 + sig.recoveryParam;
     if (raw.length === 9) {
         raw.pop();
         raw.pop();
@@ -140,19 +139,19 @@ export function serialize(transaction: UnsignedTransaction, signature?: Arrayish
 }
 
 export function parse(rawTransaction: Arrayish): Transaction {
-    let transaction = RLP.decode(rawTransaction);
+    const transaction = RLP.decode(rawTransaction);
     if (transaction.length !== 9 && transaction.length !== 6) {
         errors.throwError('invalid raw transaction', errors.INVALID_ARGUMENT, { arg: 'rawTransactin', value: rawTransaction });
     }
 
-    let tx: Transaction = {
+    const tx: Transaction = {
         nonce:    handleNumber(transaction[0]).toNumber(),
         gasPrice: handleNumber(transaction[1]),
         gasLimit: handleNumber(transaction[2]),
         to:       handleAddress(transaction[3]),
         value:    handleNumber(transaction[4]),
         data:     transaction[5],
-        chainId:  0
+        chainId:  0,
     };
 
     // Legacy unsigned transaction
@@ -182,7 +181,7 @@ export function parse(rawTransaction: Arrayish): Transaction {
 
         let recoveryParam = tx.v - 27;
 
-        let raw = transaction.slice(0, 6);
+        const raw = transaction.slice(0, 6);
 
         if (tx.chainId !== 0) {
             raw.push(hexlify(tx.chainId));
@@ -191,9 +190,9 @@ export function parse(rawTransaction: Arrayish): Transaction {
             recoveryParam -= tx.chainId * 2 + 8;
         }
 
-        let digest = keccak256(RLP.encode(raw));
+        const digest = keccak256(RLP.encode(raw));
         try {
-            tx.from = recoverAddress(digest, { r: hexlify(tx.r), s: hexlify(tx.s), recoveryParam: recoveryParam });
+            tx.from = recoverAddress(digest, { r: hexlify(tx.r), s: hexlify(tx.s), recoveryParam });
         } catch (error) {
             errors.info(error);
         }
@@ -209,13 +208,13 @@ export function populateTransaction(transaction: any, provider: Provider, from: 
     if (!Provider.isProvider(provider)) {
         errors.throwError('missing provider', errors.INVALID_ARGUMENT, {
             argument: 'provider',
-            value: provider
+            value: provider,
         });
     }
 
     checkProperties(transaction, allowedTransactionKeys);
 
-    let tx = shallowCopy(transaction);
+    const tx = shallowCopy(transaction);
 
     if (tx.to != null) {
         tx.to = provider.resolveName(tx.to);
@@ -230,7 +229,7 @@ export function populateTransaction(transaction: any, provider: Provider, from: 
     }
 
     if (tx.gasLimit == null) {
-        let estimate = shallowCopy(tx);
+        const estimate = shallowCopy(tx);
         estimate.from = from;
         tx.gasLimit = provider.estimateGas(estimate);
     }

@@ -4,7 +4,7 @@ const AddressZero = '0x0000000000000000000000000000000000000000';
 const HashZero = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 // NFKD (decomposed)
-//const EtherSymbol = '\uD835\uDF63';
+// const EtherSymbol = '\uD835\uDF63';
 
 // NFKC (composed)
 const EtherSymbol = '\u039e';
@@ -27,5 +27,5 @@ export {
     One,
     Two,
     WeiPerEther,
-    MaxUint256
+    MaxUint256,
 };

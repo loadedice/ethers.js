@@ -17,11 +17,10 @@ import { randomBytes } from './random-bytes';
 // Imported Types
 import { Arrayish } from './bytes';
 
-
 // Exported Types
 export type ProgressCallback = (percent: number) => void;
 
-export type EncryptOptions = {
+export interface EncryptOptions {
    iv?: Arrayish;
    entropy?: Arrayish;
    mnemonic?: string;
@@ -33,9 +32,8 @@ export type EncryptOptions = {
        N?: number;
        r?: number;
        p?: number;
-   }
+   };
 }
-
 
 function looseArrayify(hexString: string): Uint8Array {
     if (typeof(hexString) === 'string' && hexString.substring(0, 2) !== '0x') {
@@ -59,14 +57,14 @@ function getPassword(password: Arrayish): Uint8Array {
 
 // Search an Object and its children recursively, caselessly.
 function searchPath(object: any, path: string): string {
-    var currentChild = object;
+    let currentChild = object;
 
-    var comps = path.toLowerCase().split('/');
-    for (var i = 0; i < comps.length; i++) {
+    const comps = path.toLowerCase().split('/');
+    for (let i = 0; i < comps.length; i++) {
 
         // Search for a child object with a case-insensitive matching key
-        var matchingChild = null;
-        for (var key in currentChild) {
+        let matchingChild = null;
+        for (const key in currentChild) {
              if (key.toLowerCase() === comps[i]) {
                  matchingChild = currentChild[key];
                  break;
@@ -85,42 +83,41 @@ function searchPath(object: any, path: string): string {
     return currentChild;
 }
 
-
 // @TODO: Make a type for string or arrayish
 // See: https://github.com/ethereum/pyethsaletool
 export function decryptCrowdsale(json: string, password: Arrayish | string): SigningKey {
-    var data = JSON.parse(json);
+    const data = JSON.parse(json);
 
     password = getPassword(password);
 
     // Ethereum Address
-    var ethaddr = getAddress(searchPath(data, 'ethaddr'));
+    const ethaddr = getAddress(searchPath(data, 'ethaddr'));
 
     // Encrypted Seed
-    var encseed = looseArrayify(searchPath(data, 'encseed'));
+    const encseed = looseArrayify(searchPath(data, 'encseed'));
     if (!encseed || (encseed.length % 16) !== 0) {
         throw new Error('invalid encseed');
     }
 
-    let key = pbkdf2(password, password, 2000, 32, 'sha256').slice(0, 16);
+    const key = pbkdf2(password, password, 2000, 32, 'sha256').slice(0, 16);
 
-    var iv = encseed.slice(0, 16);
-    var encryptedSeed = encseed.slice(16);
+    const iv = encseed.slice(0, 16);
+    const encryptedSeed = encseed.slice(16);
 
     // Decrypt the seed
-    var aesCbc = new aes.ModeOfOperation.cbc(key, iv);
-    var seed = arrayify(aesCbc.decrypt(encryptedSeed));
+    const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
+    let seed = arrayify(aesCbc.decrypt(encryptedSeed));
     seed = aes.padding.pkcs7.strip(seed);
 
     // This wallet format is weird... Convert the binary encoded hex to a string.
-    var seedHex = '';
-    for (var i = 0; i < seed.length; i++) {
+    let seedHex = '';
+    for (let i = 0; i < seed.length; i++) {
         seedHex += String.fromCharCode(seed[i]);
     }
 
-    var seedHexBytes = toUtf8Bytes(seedHex);
+    const seedHexBytes = toUtf8Bytes(seedHex);
 
-    var signingKey = new SigningKey(keccak256(seedHexBytes));
+    const signingKey = new SigningKey(keccak256(seedHexBytes));
 
     if (signingKey.address !== ethaddr) {
         throw new Error('corrupt crowdsale wallet');
@@ -129,19 +126,19 @@ export function decryptCrowdsale(json: string, password: Arrayish | string): Sig
     return signingKey;
 }
 
-//@TODO: string or arrayish
+// @TODO: string or arrayish
 export function decrypt(json: string, password: Arrayish, progressCallback?: ProgressCallback): Promise<SigningKey> {
-    var data = JSON.parse(json);
+    const data = JSON.parse(json);
 
-    let passwordBytes = getPassword(password);
+    const passwordBytes = getPassword(password);
 
-    var decrypt = function(key: Uint8Array, ciphertext: Uint8Array): Uint8Array {
-        var cipher = searchPath(data, 'crypto/cipher');
+    const decrypt = function(key: Uint8Array, ciphertext: Uint8Array): Uint8Array {
+        const cipher = searchPath(data, 'crypto/cipher');
         if (cipher === 'aes-128-ctr') {
-            var iv = looseArrayify(searchPath(data, 'crypto/cipherparams/iv'))
-            var counter = new aes.Counter(iv);
+            const iv = looseArrayify(searchPath(data, 'crypto/cipherparams/iv'));
+            const counter = new aes.Counter(iv);
 
-            var aesCtr = new aes.ModeOfOperation.ctr(key, counter);
+            const aesCtr = new aes.ModeOfOperation.ctr(key, counter);
 
             return arrayify(aesCtr.decrypt(ciphertext));
         }
@@ -149,28 +146,28 @@ export function decrypt(json: string, password: Arrayish, progressCallback?: Pro
         return null;
     };
 
-    var computeMAC = function(derivedHalf: Uint8Array, ciphertext: Uint8Array) {
+    const computeMAC = function(derivedHalf: Uint8Array, ciphertext: Uint8Array) {
         return keccak256(concat([derivedHalf, ciphertext]));
-    }
+    };
 
-    var getSigningKey = function(key: Uint8Array, reject: (error?: Error) => void) {
-        var ciphertext = looseArrayify(searchPath(data, 'crypto/ciphertext'));
+    const getSigningKey = function(key: Uint8Array, reject: (error?: Error) => void) {
+        const ciphertext = looseArrayify(searchPath(data, 'crypto/ciphertext'));
 
-        var computedMAC = hexlify(computeMAC(key.slice(16, 32), ciphertext)).substring(2);
+        const computedMAC = hexlify(computeMAC(key.slice(16, 32), ciphertext)).substring(2);
         if (computedMAC !== searchPath(data, 'crypto/mac').toLowerCase()) {
             reject(new Error('invalid password'));
             return null;
         }
 
-        var privateKey = decrypt(key.slice(0, 16), ciphertext);
-        var mnemonicKey = key.slice(32, 64);
+        const privateKey = decrypt(key.slice(0, 16), ciphertext);
+        const mnemonicKey = key.slice(32, 64);
 
         if (!privateKey) {
             reject(new Error('unsupported cipher'));
             return null;
         }
 
-        var signingKey = new SigningKey(privateKey);
+        let signingKey = new SigningKey(privateKey);
         if (signingKey.address !== getAddress(data.address)) {
             reject(new Error('address mismatch'));
             return null;
@@ -178,18 +175,18 @@ export function decrypt(json: string, password: Arrayish, progressCallback?: Pro
 
         // Version 0.1 x-ethers metadata must contain an encrypted mnemonic phrase
         if (searchPath(data, 'x-ethers/version') === '0.1') {
-            var mnemonicCiphertext = looseArrayify(searchPath(data, 'x-ethers/mnemonicCiphertext'));
-            var mnemonicIv = looseArrayify(searchPath(data, 'x-ethers/mnemonicCounter'));
+            const mnemonicCiphertext = looseArrayify(searchPath(data, 'x-ethers/mnemonicCiphertext'));
+            const mnemonicIv = looseArrayify(searchPath(data, 'x-ethers/mnemonicCounter'));
 
-            var mnemonicCounter = new aes.Counter(mnemonicIv);
-            var mnemonicAesCtr = new aes.ModeOfOperation.ctr(mnemonicKey, mnemonicCounter);
+            const mnemonicCounter = new aes.Counter(mnemonicIv);
+            const mnemonicAesCtr = new aes.ModeOfOperation.ctr(mnemonicKey, mnemonicCounter);
 
-            var path = searchPath(data, 'x-ethers/path') || HDNode.defaultPath;
+            const path = searchPath(data, 'x-ethers/path') || HDNode.defaultPath;
 
-            var entropy = arrayify(mnemonicAesCtr.decrypt(mnemonicCiphertext));
-            var mnemonic = HDNode.entropyToMnemonic(entropy);
+            const entropy = arrayify(mnemonicAesCtr.decrypt(mnemonicCiphertext));
+            const mnemonic = HDNode.entropyToMnemonic(entropy);
 
-            var node = HDNode.fromMnemonic(mnemonic).derivePath(path);
+            const node = HDNode.fromMnemonic(mnemonic).derivePath(path);
             if (node.privateKey != hexlify(privateKey)) {
                 reject(new Error('mnemonic mismatch'));
                 return null;
@@ -199,17 +196,16 @@ export function decrypt(json: string, password: Arrayish, progressCallback?: Pro
         }
 
         return signingKey;
-    }
-
+    };
 
     return new Promise(function(resolve, reject) {
-        var kdf = searchPath(data, 'crypto/kdf');
+        const kdf = searchPath(data, 'crypto/kdf');
         if (kdf && typeof(kdf) === 'string') {
             if (kdf.toLowerCase() === 'scrypt') {
-                var salt = looseArrayify(searchPath(data, 'crypto/kdfparams/salt'));
-                var N = parseInt(searchPath(data, 'crypto/kdfparams/n'));
-                var r = parseInt(searchPath(data, 'crypto/kdfparams/r'));
-                var p = parseInt(searchPath(data, 'crypto/kdfparams/p'));
+                const salt = looseArrayify(searchPath(data, 'crypto/kdfparams/salt'));
+                const N = parseInt(searchPath(data, 'crypto/kdfparams/n'));
+                const r = parseInt(searchPath(data, 'crypto/kdfparams/r'));
+                const p = parseInt(searchPath(data, 'crypto/kdfparams/p'));
                 if (!N || !r || !p) {
                     reject(new Error('unsupported key-derivation function parameters'));
                     return;
@@ -221,7 +217,7 @@ export function decrypt(json: string, password: Arrayish, progressCallback?: Pro
                     return;
                 }
 
-                var dkLen = parseInt(searchPath(data, 'crypto/kdfparams/dklen'));
+                const dkLen = parseInt(searchPath(data, 'crypto/kdfparams/dklen'));
                 if (dkLen !== 32) {
                     reject( new Error('unsupported key-derivation derived-key length'));
                     return;
@@ -236,7 +232,7 @@ export function decrypt(json: string, password: Arrayish, progressCallback?: Pro
                     } else if (key) {
                         key = arrayify(key);
 
-                        var signingKey = getSigningKey(key, reject);
+                        const signingKey = getSigningKey(key, reject);
                         if (!signingKey) { return; }
 
                         if (progressCallback) { progressCallback(1); }
@@ -248,10 +244,10 @@ export function decrypt(json: string, password: Arrayish, progressCallback?: Pro
                 });
 
             } else if (kdf.toLowerCase() === 'pbkdf2') {
-                var salt = looseArrayify(searchPath(data, 'crypto/kdfparams/salt'));
+                const salt = looseArrayify(searchPath(data, 'crypto/kdfparams/salt'));
 
-                var prfFunc = null;
-                var prf = searchPath(data, 'crypto/kdfparams/prf');
+                let prfFunc = null;
+                const prf = searchPath(data, 'crypto/kdfparams/prf');
                 if (prf === 'hmac-sha256') {
                     prfFunc = 'sha256';
                 } else if (prf === 'hmac-sha512') {
@@ -261,17 +257,17 @@ export function decrypt(json: string, password: Arrayish, progressCallback?: Pro
                     return;
                 }
 
-                var c = parseInt(searchPath(data, 'crypto/kdfparams/c'));
+                const c = parseInt(searchPath(data, 'crypto/kdfparams/c'));
 
-                var dkLen = parseInt(searchPath(data, 'crypto/kdfparams/dklen'));
+                const dkLen = parseInt(searchPath(data, 'crypto/kdfparams/dklen'));
                 if (dkLen !== 32) {
                     reject( new Error('unsupported key-derivation derived-key length'));
                     return;
                 }
 
-                var key = pbkdf2(passwordBytes, salt, c, dkLen, prfFunc);
+                const key = pbkdf2(passwordBytes, salt, c, dkLen, prfFunc);
 
-                var signingKey = getSigningKey(key, reject);
+                const signingKey = getSigningKey(key, reject);
                 if (!signingKey) { return; }
 
                 resolve(signingKey);
@@ -304,9 +300,9 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
     }
     if (privateKeyBytes.length !== 32) { throw new Error('invalid private key'); }
 
-    let passwordBytes = getPassword(password);
+    const passwordBytes = getPassword(password);
 
-    let entropy: Uint8Array = null
+    let entropy: Uint8Array = null;
 
     if (options.entropy) {
         entropy = arrayify(options.entropy);
@@ -322,20 +318,20 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
         }
     }
 
-    var path: string = options.path;
+    let path: string = options.path;
     if (entropy && !path) {
         path = HDNode.defaultPath;
     }
 
-    var client = options.client;
-    if (!client) { client = "ethers.js"; }
+    let client = options.client;
+    if (!client) { client = 'ethers.js'; }
 
     // Check/generate the salt
     let salt: Uint8Array = null;
     if (options.salt) {
         salt = arrayify(options.salt);
     } else {
-        salt = randomBytes(32);;
+        salt = randomBytes(32);
     }
 
     // Override initialization vector
@@ -348,7 +344,7 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
     }
 
     // Override the uuid
-    var uuidRandom: Uint8Array = null;
+    let uuidRandom: Uint8Array = null;
     if (options.uuid) {
         uuidRandom = arrayify(options.uuid);
         if (uuidRandom.length !== 16) { throw new Error('invalid uuid'); }
@@ -357,7 +353,7 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
     }
 
     // Override the scrypt password-based key derivation function parameters
-    var N = (1 << 17), r = 8, p = 1;
+    let N = (1 << 17), r = 8, p = 1;
     if (options.scrypt) {
         if (options.scrypt.N) { N = options.scrypt.N; }
         if (options.scrypt.r) { r = options.scrypt.r; }
@@ -379,25 +375,25 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
                 key = arrayify(key);
 
                 // This will be used to encrypt the wallet (as per Web3 secret storage)
-                var derivedKey = key.slice(0, 16);
-                var macPrefix = key.slice(16, 32);
+                const derivedKey = key.slice(0, 16);
+                const macPrefix = key.slice(16, 32);
 
                 // This will be used to encrypt the mnemonic phrase (if any)
-                var mnemonicKey = key.slice(32, 64);
+                const mnemonicKey = key.slice(32, 64);
 
                 // Get the address for this private key
-                var address = (new SigningKey(privateKeyBytes)).address;
+                const address = (new SigningKey(privateKeyBytes)).address;
 
                 // Encrypt the private key
-                var counter = new aes.Counter(iv);
-                var aesCtr = new aes.ModeOfOperation.ctr(derivedKey, counter);
-                var ciphertext = arrayify(aesCtr.encrypt(privateKeyBytes));
+                const counter = new aes.Counter(iv);
+                const aesCtr = new aes.ModeOfOperation.ctr(derivedKey, counter);
+                const ciphertext = arrayify(aesCtr.encrypt(privateKeyBytes));
 
                 // Compute the message authentication code, used to check the password
-                var mac = keccak256(concat([macPrefix, ciphertext]))
+                const mac = keccak256(concat([macPrefix, ciphertext]));
 
                 // See: https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition
-                var data: { [key: string]: any } = {
+                const data: { [key: string]: any } = {
                     address: address.substring(2).toLowerCase(),
                     id: uuid.v4({ random: uuidRandom }),
                     version: 3,
@@ -412,21 +408,21 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
                             salt: hexlify(salt).substring(2),
                             n: N,
                             dklen: 32,
-                            p: p,
-                            r: r
+                            p,
+                            r,
                         },
-                        mac: mac.substring(2)
-                    }
+                        mac: mac.substring(2),
+                    },
                 };
 
                 // If we have a mnemonic, encrypt it into the JSON wallet
                 if (entropy) {
-                    var mnemonicIv = randomBytes(16);
-                    var mnemonicCounter = new aes.Counter(mnemonicIv);
-                    var mnemonicAesCtr = new aes.ModeOfOperation.ctr(mnemonicKey, mnemonicCounter);
-                    var mnemonicCiphertext = arrayify(mnemonicAesCtr.encrypt(entropy));
-                    var now = new Date();
-                    var timestamp = (now.getUTCFullYear() + '-' +
+                    const mnemonicIv = randomBytes(16);
+                    const mnemonicCounter = new aes.Counter(mnemonicIv);
+                    const mnemonicAesCtr = new aes.ModeOfOperation.ctr(mnemonicKey, mnemonicCounter);
+                    const mnemonicCiphertext = arrayify(mnemonicAesCtr.encrypt(entropy));
+                    const now = new Date();
+                    const timestamp = (now.getUTCFullYear() + '-' +
                                      zpad(now.getUTCMonth() + 1, 2) + '-' +
                                      zpad(now.getUTCDate(), 2) + 'T' +
                                      zpad(now.getUTCHours(), 2) + '-' +
@@ -434,12 +430,12 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
                                      zpad(now.getUTCSeconds(), 2) + '.0Z'
                                     );
                     data['x-ethers'] = {
-                        client: client,
+                        client,
                         gethFilename: ('UTC--' + timestamp + '--' + data.address),
                         mnemonicCounter: hexlify(mnemonicIv).substring(2),
                         mnemonicCiphertext: hexlify(mnemonicCiphertext).substring(2),
-                        path: path,
-                        version: "0.1"
+                        path,
+                        version: '0.1',
                     };
                 }
 
@@ -452,4 +448,3 @@ export function encrypt(privateKey: Arrayish | SigningKey, password: Arrayish | 
         });
     });
 }
-

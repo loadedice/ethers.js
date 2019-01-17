@@ -3,7 +3,6 @@
 // Wordlists
 // See: https://github.com/bitcoin/bips/blob/master/bip-0039/bip-0039-wordlists.md
 
-
 import { Wordlist } from '../utils/wordlist';
 
 import { langEn as _en } from './lang-en';
@@ -25,5 +24,5 @@ const zh_cn: Wordlist = _zh_cn;
 const zh_tw: Wordlist = _zh_tw;
 
 export {
-    en, es, fr, it, ja, ko, zh, zh_cn, zh_tw
-}
+    en, es, fr, it, ja, ko, zh, zh_cn, zh_tw,
+};

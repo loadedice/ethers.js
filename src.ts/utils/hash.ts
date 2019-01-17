@@ -14,14 +14,14 @@ import { Arrayish } from './bytes';
 ///////////////////////////////
 
 const Zeros = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-const Partition = new RegExp("^((.*)\\.)?([^.]+)$");
-const UseSTD3ASCIIRules = new RegExp("^[a-z0-9.-]*$");
+const Partition = new RegExp('^((.*)\\.)?([^.]+)$');
+const UseSTD3ASCIIRules = new RegExp('^[a-z0-9.-]*$');
 
 export function namehash(name: string): string {
     if (typeof(name) !== 'string') {
         errors.throwError('invalid address - ' + String(name), errors.INVALID_ARGUMENT, {
             argument: 'name',
-            value: name
+            value: name,
         });
     }
 
@@ -34,14 +34,14 @@ export function namehash(name: string): string {
     if (!name.match(UseSTD3ASCIIRules)) {
         errors.throwError('contains invalid UseSTD3ASCIIRules characters', errors.INVALID_ARGUMENT, {
             argument: 'name',
-            value: name
+            value: name,
         });
     }
 
     let result: string | Uint8Array = Zeros;
     while (name.length) {
-        let partition = name.match(Partition);
-        let label = toUtf8Bytes(partition[3]);
+        const partition = name.match(Partition);
+        const label = toUtf8Bytes(partition[3]);
         result = keccak256(concat([result, keccak256(label)]));
 
         name = partition[2] || '';
@@ -49,7 +49,6 @@ export function namehash(name: string): string {
 
     return hexlify(result);
 }
-
 
 export function id(text: string): string {
     return keccak256(toUtf8Bytes(text));
@@ -59,7 +58,6 @@ export function hashMessage(message: Arrayish | string): string {
     return keccak256(concat([
         toUtf8Bytes('\x19Ethereum Signed Message:\n'),
         toUtf8Bytes(String(message.length)),
-        ((typeof(message) === 'string') ? toUtf8Bytes(message): message)
+        ((typeof(message) === 'string') ? toUtf8Bytes(message) : message),
     ]));
 }
-

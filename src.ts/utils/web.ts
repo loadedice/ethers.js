@@ -8,35 +8,32 @@ import { toUtf8Bytes } from './utf8';
 
 import * as errors from '../errors';
 
-
 // Exported Types
-export type ConnectionInfo = {
-    url: string,
-    user?: string,
-    password?: string,
-    allowInsecure?: boolean,
-    timeout?: number,
-    headers?: { [key: string]: string | number }
-};
-
-export interface OnceBlockable {
-    once(eventName: "block", handler: () => void): void;
+export interface ConnectionInfo {
+    url: string;
+    user?: string;
+    password?: string;
+    allowInsecure?: boolean;
+    timeout?: number;
+    headers?: { [key: string]: string | number };
 }
 
-export type PollOptions = {
-    timeout?: number,
-    floor?: number,
-    ceiling?: number,
-    interval?: number,
-    onceBlock?: OnceBlockable
-};
+export interface OnceBlockable {
+    once(eventName: 'block', handler: () => void): void;
+}
 
+export interface PollOptions {
+    timeout?: number;
+    floor?: number;
+    ceiling?: number;
+    interval?: number;
+    onceBlock?: OnceBlockable;
+}
 
-
-type Header = { key: string, value: string };
+interface Header { key: string; value: string; }
 
 export function fetchJson(connection: string | ConnectionInfo, json: string, processFunc: (value: any) => any): Promise<any> {
-    let headers: { [key: string]: Header } = { };
+    const headers: { [key: string]: Header } = { };
 
     let url: string = null;
 
@@ -57,8 +54,8 @@ export function fetchJson(connection: string | ConnectionInfo, json: string, pro
         }
 
         if (connection.headers) {
-            for (let key in connection.headers) {
-                headers[key.toLowerCase()] = { key: key, value: String(connection.headers[key]) };
+            for (const key in connection.headers) {
+                headers[key.toLowerCase()] = { key, value: String(connection.headers[key]) };
             }
         }
 
@@ -67,20 +64,20 @@ export function fetchJson(connection: string | ConnectionInfo, json: string, pro
                 errors.throwError(
                     'basic authentication requires a secure https url',
                     errors.INVALID_ARGUMENT,
-                    { arg: 'url', url: url, user: connection.user, password: '[REDACTED]' }
+                    { arg: 'url', url, user: connection.user, password: '[REDACTED]' },
                 );
             }
 
-            let authorization = connection.user + ':' + connection.password;
-            headers['authorization'] = {
+            const authorization = connection.user + ':' + connection.password;
+            headers.authorization = {
                 key: 'Authorization',
-                value: 'Basic ' + base64Encode(toUtf8Bytes(authorization))
+                value: 'Basic ' + base64Encode(toUtf8Bytes(authorization)),
             };
         }
     }
 
-    return new Promise(function(resolve, reject) {
-        let request = new XMLHttpRequest();
+    return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest();
 
         let timer: any = null;
         timer = setTimeout(() => {
@@ -93,11 +90,11 @@ export function fetchJson(connection: string | ConnectionInfo, json: string, pro
             }, 0);
         }, timeout);
 
-        let cancelTimeout = () => {
+        const cancelTimeout = () => {
             if (timer == null) { return; }
             clearTimeout(timer);
             timer = null;
-        }
+        };
 
         if (json) {
             request.open('POST', url, true);
@@ -107,17 +104,17 @@ export function fetchJson(connection: string | ConnectionInfo, json: string, pro
         }
 
         Object.keys(headers).forEach((key) => {
-            let header = headers[key];
+            const header = headers[key];
             request.setRequestHeader(header.key, header.value);
         });
 
-        request.onreadystatechange = function() {
+        request.onreadystatechange = () => {
             if (request.readyState !== 4) { return; }
 
-            if (request.status != 200) {
+            if (request.status !== 200) {
                 cancelTimeout();
                 // @TODO: not any!
-                let error: any = new Error('invalid response - ' + request.status);
+                const error: any = new Error('invalid response - ' + request.status);
                 error.statusCode = request.status;
                 if (request.responseText) {
                     error.responseText = request.responseText;
@@ -132,7 +129,7 @@ export function fetchJson(connection: string | ConnectionInfo, json: string, pro
             } catch (error) {
                 cancelTimeout();
                 // @TODO: not any!
-                let jsonError: any = new Error('invalid json response');
+                const jsonError: any = new Error('invalid json response');
                 jsonError.orginialError = error;
                 jsonError.responseText = request.responseText;
                 if (json != null) {
@@ -160,10 +157,10 @@ export function fetchJson(connection: string | ConnectionInfo, json: string, pro
             resolve(result);
         };
 
-        request.onerror = function(error) {
+        request.onerror = (error) => {
             cancelTimeout();
             reject(error);
-        }
+        };
 
         try {
             if (json != null) {
@@ -175,7 +172,7 @@ export function fetchJson(connection: string | ConnectionInfo, json: string, pro
         } catch (error) {
             cancelTimeout();
             // @TODO: not any!
-            let connectionError: any = new Error('connection error');
+            const connectionError: any = new Error('connection error');
             connectionError.error = error;
             reject(connectionError);
         }
@@ -195,7 +192,7 @@ export function poll(func: () => Promise<any>, options?: PollOptions): Promise<a
         let done: boolean = false;
 
         // Returns true if cancel was successful. Unsuccessful cancel means we're already done.
-        let cancel = (): boolean => {
+        const cancel = (): boolean => {
             if (done) { return false; }
             done = true;
             if (timer) { clearTimeout(timer); }
@@ -205,7 +202,7 @@ export function poll(func: () => Promise<any>, options?: PollOptions): Promise<a
         if (options.timeout) {
             timer = setTimeout(() => {
                 if (cancel()) { reject(new Error('timeout')); }
-            }, options.timeout)
+            }, options.timeout);
         }
 
         let attempt = 0;
@@ -238,4 +235,3 @@ export function poll(func: () => Promise<any>, options?: PollOptions): Promise<a
         check();
     });
 }
-

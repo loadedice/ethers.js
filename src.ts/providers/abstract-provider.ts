@@ -29,16 +29,16 @@ export interface Block {
     miner: string;
     extraData: string;
 
-    transactions: Array<string>;
+    transactions: string[];
 }
 
 export type BlockTag = string | number;
 
-export type Filter = {
-    fromBlock?: BlockTag,
-    toBlock?: BlockTag,
-    address?: string,
-    topics?: Array<string | Array<string>>,
+export interface Filter {
+    fromBlock?: BlockTag;
+    toBlock?: BlockTag;
+    address?: string;
+    topics?: Array<string | string[]>;
 }
 
 export interface Log {
@@ -48,114 +48,113 @@ export interface Log {
 
     removed?: boolean;
 
-    transactionLogIndex?: number,
+    transactionLogIndex?: number;
 
     address: string;
     data: string;
 
-    topics: Array<string>;
+    topics: string[];
 
     transactionHash?: string;
     logIndex?: number;
 }
 
 export interface TransactionReceipt {
-    contractAddress?: string,
-    transactionIndex?: number,
-    root?: string,
-    gasUsed?: BigNumber,
-    logsBloom?: string,
-    blockHash?: string,
-    transactionHash?: string,
-    logs?: Array<Log>,
-    blockNumber?: number,
-    confirmations?: number,
-    cumulativeGasUsed?: BigNumber,
-    byzantium: boolean,
-    status?: number
-};
+    contractAddress?: string;
+    transactionIndex?: number;
+    root?: string;
+    gasUsed?: BigNumber;
+    logsBloom?: string;
+    blockHash?: string;
+    transactionHash?: string;
+    logs?: Log[];
+    blockNumber?: number;
+    confirmations?: number;
+    cumulativeGasUsed?: BigNumber;
+    byzantium: boolean;
+    status?: number;
+}
 
-export type TransactionRequest = {
-    to?: string | Promise<string>,
-    from?: string | Promise<string>,
-    nonce?: BigNumberish | Promise<BigNumberish>,
+export interface TransactionRequest {
+    to?: string | Promise<string>;
+    from?: string | Promise<string>;
+    nonce?: BigNumberish | Promise<BigNumberish>;
 
-    gasLimit?: BigNumberish | Promise<BigNumberish>,
-    gasPrice?: BigNumberish | Promise<BigNumberish>,
+    gasLimit?: BigNumberish | Promise<BigNumberish>;
+    gasPrice?: BigNumberish | Promise<BigNumberish>;
 
-    data?: Arrayish | Promise<Arrayish>,
-    value?: BigNumberish | Promise<BigNumberish>,
-    chainId?: number | Promise<number>,
+    data?: Arrayish | Promise<Arrayish>;
+    value?: BigNumberish | Promise<BigNumberish>;
+    chainId?: number | Promise<number>;
 }
 
 export interface TransactionResponse extends Transaction {
     // Only if a transaction has been mined
-    blockNumber?: number,
-    blockHash?: string,
-    timestamp?: number,
+    blockNumber?: number;
+    blockHash?: string;
+    timestamp?: number;
 
-    confirmations: number,
+    confirmations: number;
 
     // Not optional (as it is in Transaction)
     from: string;
 
     // The raw transaction
-    raw?: string,
+    raw?: string;
 
     // This function waits until the transaction has been mined
-    wait: (confirmations?: number) => Promise<TransactionReceipt>
-};
+    wait: (confirmations?: number) => Promise<TransactionReceipt>;
+}
 
-export type EventType = string | Array<string> | Filter;
+export type EventType = string | string[] | Filter;
 
-export type Listener = (...args: Array<any>) => void;
+export type Listener = (...args: any[]) => void;
 
 ///////////////////////////////
 // Exported Abstracts
 
 export abstract class Provider implements OnceBlockable {
-    abstract getNetwork(): Promise<Network>;
 
-    abstract getBlockNumber(): Promise<number>;
-    abstract getGasPrice(): Promise<BigNumber>;
-
-    abstract getBalance(addressOrName: string | Promise<string>, blockTag?: BlockTag | Promise<BlockTag>): Promise<BigNumber>;
-    abstract getTransactionCount(addressOrName: string | Promise<string>, blockTag?: BlockTag | Promise<BlockTag>): Promise<number>;
-    abstract getCode(addressOrName: string | Promise<string>, blockTag?: BlockTag | Promise<BlockTag>): Promise<string> ;
-    abstract getStorageAt(addressOrName: string | Promise<string>, position: BigNumberish | Promise<BigNumberish>, blockTag?: BlockTag | Promise<BlockTag>): Promise<string>;
-
-    abstract sendTransaction(signedTransaction: string | Promise<string>): Promise<TransactionResponse>;
-    abstract call(transaction: TransactionRequest, blockTag?: BlockTag | Promise<BlockTag>): Promise<string>;
-    abstract estimateGas(transaction: TransactionRequest): Promise<BigNumber>;
-
-    abstract getBlock(blockHashOrBlockTag: BlockTag | string | Promise<BlockTag | string>, includeTransactions?: boolean): Promise<Block>;
-    abstract getTransaction(transactionHash: string): Promise<TransactionResponse>;
-    abstract getTransactionReceipt(transactionHash: string): Promise<TransactionReceipt>;
-
-    abstract getLogs(filter: Filter): Promise<Array<Log>>;
-
-    abstract resolveName(name: string | Promise<string>): Promise<string>;
-    abstract lookupAddress(address: string | Promise<string>): Promise<string>;
-    abstract on(eventName: EventType, listener: Listener): Provider;
-    abstract once(eventName: EventType, listener: Listener): Provider;
-    abstract listenerCount(eventName?: EventType): number;
-    abstract listeners(eventName: EventType): Array<Listener>;
-    abstract removeAllListeners(eventName: EventType): Provider;
-    abstract removeListener(eventName: EventType, listener: Listener): Provider;
-
-    // @TODO: This *could* be implemented here, but would pull in events...
-    abstract waitForTransaction(transactionHash: string, timeout?: number): Promise<TransactionReceipt>;
+    public static isProvider(value: any): value is Provider {
+        return isType(value, 'Provider');
+    }
 
     constructor() {
         setType(this, 'Provider');
     }
+    public abstract getNetwork(): Promise<Network>;
 
-    static isProvider(value: any): value is Provider {
-        return isType(value, 'Provider');
-    }
+    public abstract getBlockNumber(): Promise<number>;
+    public abstract getGasPrice(): Promise<BigNumber>;
+
+    public abstract getBalance(addressOrName: string | Promise<string>, blockTag?: BlockTag | Promise<BlockTag>): Promise<BigNumber>;
+    public abstract getTransactionCount(addressOrName: string | Promise<string>, blockTag?: BlockTag | Promise<BlockTag>): Promise<number>;
+    public abstract getCode(addressOrName: string | Promise<string>, blockTag?: BlockTag | Promise<BlockTag>): Promise<string> ;
+    public abstract getStorageAt(addressOrName: string | Promise<string>, position: BigNumberish | Promise<BigNumberish>, blockTag?: BlockTag | Promise<BlockTag>): Promise<string>;
+
+    public abstract sendTransaction(signedTransaction: string | Promise<string>): Promise<TransactionResponse>;
+    public abstract call(transaction: TransactionRequest, blockTag?: BlockTag | Promise<BlockTag>): Promise<string>;
+    public abstract estimateGas(transaction: TransactionRequest): Promise<BigNumber>;
+
+    public abstract getBlock(blockHashOrBlockTag: BlockTag | string | Promise<BlockTag | string>, includeTransactions?: boolean): Promise<Block>;
+    public abstract getTransaction(transactionHash: string): Promise<TransactionResponse>;
+    public abstract getTransactionReceipt(transactionHash: string): Promise<TransactionReceipt>;
+
+    public abstract getLogs(filter: Filter): Promise<Log[]>;
+
+    public abstract resolveName(name: string | Promise<string>): Promise<string>;
+    public abstract lookupAddress(address: string | Promise<string>): Promise<string>;
+    public abstract on(eventName: EventType, listener: Listener): Provider;
+    public abstract once(eventName: EventType, listener: Listener): Provider;
+    public abstract listenerCount(eventName?: EventType): number;
+    public abstract listeners(eventName: EventType): Listener[];
+    public abstract removeAllListeners(eventName: EventType): Provider;
+    public abstract removeListener(eventName: EventType, listener: Listener): Provider;
+
+    // @TODO: This *could* be implemented here, but would pull in events...
+    public abstract waitForTransaction(transactionHash: string, timeout?: number): Promise<TransactionReceipt>;
 
 //    readonly inherits: (child: any) => void;
 }
 
-//defineReadOnly(Signer, 'inherits', inheritable(Abstract));
-
+// defineReadOnly(Signer, 'inherits', inheritable(Abstract));

@@ -11,13 +11,13 @@ import { Networkish } from '../utils/networks';
 import * as errors from '../errors';
 
 export class InfuraProvider extends JsonRpcProvider {
-    readonly apiAccessToken: string;
+    public readonly apiAccessToken: string;
 
     constructor(network?: Networkish, apiAccessToken?: string) {
-        network = getNetwork((network == null) ? 'homestead': network);
+        network = getNetwork((network == null) ? 'homestead' : network);
 
-        var host = null;
-        switch(network.name) {
+        let host = null;
+        switch (network.name) {
             case 'homestead':
                 host = 'mainnet.infura.io';
                 break;
@@ -40,20 +40,20 @@ export class InfuraProvider extends JsonRpcProvider {
         defineReadOnly(this, 'apiAccessToken', apiAccessToken || null);
     }
 
-    protected _startPending(): void {
-        errors.warn('WARNING: INFURA does not support pending filters');
-    }
-
-    getSigner(address?: string): JsonRpcSigner {
+    public getSigner(address?: string): JsonRpcSigner {
         errors.throwError(
             'INFURA does not support signing',
             errors.UNSUPPORTED_OPERATION,
-            { operation: 'getSigner' }
+            { operation: 'getSigner' },
         );
         return null;
     }
 
-    listAccounts(): Promise<Array<string>> {
+    public listAccounts(): Promise<string[]> {
         return Promise.resolve([]);
+    }
+
+    protected _startPending(): void {
+        errors.warn('WARNING: INFURA does not support pending filters');
     }
 }

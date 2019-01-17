@@ -20,12 +20,12 @@ import * as errors from '../errors';
 const BN_1 = new BN.BN(-1);
 
 function toHex(bn: BN.BN): string {
-    let value = bn.toString(16);
+    const value = bn.toString(16);
     if (value[0] === '-') {
         if ((value.length % 2) === 0) {
             return '-0x0' + value.substring(1);
         }
-        return "-0x" + value.substring(1);
+        return '-0x' + value.substring(1);
     }
     if ((value.length % 2) === 1) { return '0x0' + value; }
     return '0x' + value;
@@ -40,7 +40,7 @@ function toBigNumber(bn: BN.BN): BigNumber {
 }
 
 function _bnify(value: BigNumber): BN.BN {
-    let hex: string = (<any>value)._hex;
+    const hex: string = (value as any)._hex;
     if (hex[0] === '-') {
         return (new BN.BN(hex.substring(3), 16)).mul(BN_1);
     }
@@ -50,6 +50,10 @@ function _bnify(value: BigNumber): BN.BN {
 export type BigNumberish = BigNumber | string | number | Arrayish;
 
 export class BigNumber implements Hexable {
+
+    public static isBigNumber(value: any): value is BigNumber {
+        return isType(value, 'BigNumber');
+    }
     private readonly _hex: string;
 
     constructor(value: BigNumberish) {
@@ -69,12 +73,12 @@ export class BigNumber implements Hexable {
                 defineReadOnly(this, '_hex', toHex(new BN.BN(value)));
 
             } else {
-                errors.throwError('invalid BigNumber string value', errors.INVALID_ARGUMENT, { arg: 'value', value: value });
+                errors.throwError('invalid BigNumber string value', errors.INVALID_ARGUMENT, { arg: 'value', value });
             }
 
         } else if (typeof(value) === 'number') {
             if (parseInt(String(value)) !== value) {
-                errors.throwError('underflow', errors.NUMERIC_FAULT, { operation: 'setValue', fault: 'underflow', value: value, outputValue: parseInt(String(value)) });
+                errors.throwError('underflow', errors.NUMERIC_FAULT, { operation: 'setValue', fault: 'underflow', value, outputValue: parseInt(String(value)) });
             }
             try {
                 defineReadOnly(this, '_hex', toHex(new BN.BN(value)));
@@ -85,92 +89,92 @@ export class BigNumber implements Hexable {
         } else if (value instanceof BigNumber) {
             defineReadOnly(this, '_hex', value._hex);
 
-        } else if ((<any>value).toHexString) {
-            defineReadOnly(this, '_hex', toHex(toBN((<any>value).toHexString())));
+        } else if ((value as any).toHexString) {
+            defineReadOnly(this, '_hex', toHex(toBN((value as any).toHexString())));
 
-        } else if ((<any>value)._hex && isHexString((<any>value)._hex)) {
-            defineReadOnly(this, '_hex', (<any>value)._hex);
+        } else if ((value as any)._hex && isHexString((value as any)._hex)) {
+            defineReadOnly(this, '_hex', (value as any)._hex);
 
         } else if (isArrayish(value)) {
             defineReadOnly(this, '_hex', toHex(new BN.BN(hexlify(value).substring(2), 16)));
 
         } else {
-            errors.throwError('invalid BigNumber value', errors.INVALID_ARGUMENT, { arg: 'value', value: value });
+            errors.throwError('invalid BigNumber value', errors.INVALID_ARGUMENT, { arg: 'value', value });
         }
     }
 
-    fromTwos(value: number): BigNumber {
+    public fromTwos(value: number): BigNumber {
         return toBigNumber(_bnify(this).fromTwos(value));
     }
 
-    toTwos(value: number): BigNumber {
+    public toTwos(value: number): BigNumber {
         return toBigNumber(_bnify(this).toTwos(value));
     }
 
-    abs(): BigNumber {
+    public abs(): BigNumber {
         if (this._hex[0] === '-') {
             return toBigNumber(_bnify(this).mul(BN_1));
         }
         return this;
     }
 
-    add(other: BigNumberish): BigNumber {
+    public add(other: BigNumberish): BigNumber {
         return toBigNumber(_bnify(this).add(toBN(other)));
     }
 
-    sub(other: BigNumberish): BigNumber {
+    public sub(other: BigNumberish): BigNumber {
         return toBigNumber(_bnify(this).sub(toBN(other)));
     }
 
-    div(other: BigNumberish): BigNumber {
-        let o: BigNumber = bigNumberify(other);
+    public div(other: BigNumberish): BigNumber {
+        const o: BigNumber = bigNumberify(other);
         if (o.isZero()) {
             errors.throwError('division by zero', errors.NUMERIC_FAULT, { operation: 'divide', fault: 'division by zero' });
         }
         return toBigNumber(_bnify(this).div(toBN(other)));
     }
 
-    mul(other: BigNumberish): BigNumber {
+    public mul(other: BigNumberish): BigNumber {
         return toBigNumber(_bnify(this).mul(toBN(other)));
     }
 
-    mod(other: BigNumberish): BigNumber {
+    public mod(other: BigNumberish): BigNumber {
         return toBigNumber(_bnify(this).mod(toBN(other)));
     }
 
-    pow(other: BigNumberish): BigNumber {
+    public pow(other: BigNumberish): BigNumber {
         return toBigNumber(_bnify(this).pow(toBN(other)));
     }
 
-    maskn(value: number): BigNumber {
+    public maskn(value: number): BigNumber {
         return toBigNumber(_bnify(this).maskn(value));
     }
 
-    eq(other: BigNumberish): boolean {
+    public eq(other: BigNumberish): boolean {
         return _bnify(this).eq(toBN(other));
     }
 
-    lt(other: BigNumberish): boolean {
+    public lt(other: BigNumberish): boolean {
         return _bnify(this).lt(toBN(other));
     }
 
-    lte(other: BigNumberish): boolean {
+    public lte(other: BigNumberish): boolean {
         return _bnify(this).lte(toBN(other));
     }
 
-    gt(other: BigNumberish): boolean {
+    public gt(other: BigNumberish): boolean {
         return _bnify(this).gt(toBN(other));
    }
 
-    gte(other: BigNumberish): boolean {
+    public gte(other: BigNumberish): boolean {
         return _bnify(this).gte(toBN(other));
     }
 
-    isZero(): boolean {
+    public isZero(): boolean {
         return _bnify(this).isZero();
     }
 
-    toNumber(): number {
+    public toNumber(): number {
         try {
             return _bnify(this).toNumber();
         } catch (error) {
@@ -179,16 +183,12 @@ export class BigNumber implements Hexable {
         return null;
     }
 
-    toString(): string {
+    public toString(): string {
         return _bnify(this).toString(10);
     }
 
-    toHexString(): string {
+    public toHexString(): string {
         return this._hex;
-    }
-
-    static isBigNumber(value: any): value is BigNumber {
-        return isType(value, 'BigNumber');
     }
 }
 
@@ -196,4 +196,3 @@ export function bigNumberify(value: BigNumberish): BigNumber {
     if (BigNumber.isBigNumber(value)) { return value; }
     return new BigNumber(value);
 }
-

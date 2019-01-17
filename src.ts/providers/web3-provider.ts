@@ -9,14 +9,13 @@ import { Networkish } from '../utils/networks';
 
 import * as errors from '../errors';
 
-
 // Exported Types
-export type AsyncSendable = {
+export interface AsyncSendable {
     isMetaMask?: boolean;
     host?: string;
     path?: string;
-    sendAsync?: (request: any, callback: (error: any, response: any) => void) => void
-    send?: (request: any, callback: (error: any, response: any) => void) => void
+    sendAsync?: (request: any, callback: (error: any, response: any) => void) => void;
+    send?: (request: any, callback: (error: any, response: any) => void) => void;
 }
 
 /*
@@ -28,7 +27,7 @@ utils.defineProperty(Web3Signer, 'onchange', {
 */
 
 export class Web3Provider extends JsonRpcProvider {
-    readonly _web3Provider: AsyncSendable;
+    public readonly _web3Provider: AsyncSendable;
     private _sendAsync: (request: any, callback: (error: any, response: any) => void) => void;
 
     constructor(web3Provider: AsyncSendable, network?: Networkish) {
@@ -48,14 +47,14 @@ export class Web3Provider extends JsonRpcProvider {
             errors.throwError(
                 'invalid web3Provider',
                 errors.INVALID_ARGUMENT,
-                { arg: 'web3Provider', value: web3Provider }
+                { arg: 'web3Provider', value: web3Provider },
             );
         }
 
         defineReadOnly(this, '_web3Provider', web3Provider);
     }
 
-    send(method: string, params: any): Promise<any> {
+    public send(method: string, params: any): Promise<any> {
 
         // Metamask complains about eth_sign (and on some versions hangs)
         if (method == 'eth_sign' && this._web3Provider.isMetaMask) {
@@ -65,11 +64,11 @@ export class Web3Provider extends JsonRpcProvider {
         }
 
         return new Promise((resolve, reject) => {
-            var request = {
-                method: method,
-                params: params,
+            let request = {
+                method,
+                params,
                 id: 42,
-                jsonrpc: "2.0"
+                jsonrpc: '2.0',
             };
 
             this._sendAsync(request, function(error, result) {
@@ -80,7 +79,7 @@ export class Web3Provider extends JsonRpcProvider {
 
                 if (result.error) {
                     // @TODO: not any
-                    var error: any = new Error(result.error.message);
+                    let error: any = new Error(result.error.message);
                     error.code = result.error.code;
                     error.data = result.error.data;
                     reject(error);

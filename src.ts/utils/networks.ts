@@ -2,19 +2,18 @@
 
 import * as errors from '../errors';
 
-
-export type Network = {
-    name: string,
-    chainId: number,
-    ensAddress?: string,
-    _defaultProvider?: (providers: any) => any
+export interface Network {
+    name: string;
+    chainId: number;
+    ensAddress?: string;
+    _defaultProvider?: (providers: any) => any;
 }
 
 export type Networkish = Network | string | number;
 
 function ethDefaultProvider(network: string): (providers: any) => any {
     return function(providers: any): any {
-        let providerList: Array<any> = [];
+        const providerList: any[] = [];
 
         if (providers.InfuraProvider) {
             providerList.push(new providers.InfuraProvider(network));
@@ -27,11 +26,11 @@ function ethDefaultProvider(network: string): (providers: any) => any {
         if (providerList.length === 0) { return null; }
 
         if (providers.FallbackProvider) {
-            return new providers.FallbackProvider(providerList);;
+            return new providers.FallbackProvider(providerList);
         }
 
         return providerList[0];
-    }
+    };
 }
 
 function etcDefaultProvider(url: string, network: string): (providers: any) => any {
@@ -41,65 +40,65 @@ function etcDefaultProvider(url: string, network: string): (providers: any) => a
         }
 
         return null;
-    }
+    };
 }
 
 const homestead: Network = {
     chainId: 1,
-    ensAddress: "0x314159265dd8dbb310642f98f50c066173c1259b",
-    name: "homestead",
-    _defaultProvider: ethDefaultProvider('homestead')
+    ensAddress: '0x314159265dd8dbb310642f98f50c066173c1259b',
+    name: 'homestead',
+    _defaultProvider: ethDefaultProvider('homestead'),
 };
 
 const ropsten: Network = {
     chainId: 3,
-    ensAddress: "0x112234455c3a32fd11230c42e7bccd4a84e02010",
-    name: "ropsten",
-    _defaultProvider: ethDefaultProvider('ropsten')
+    ensAddress: '0x112234455c3a32fd11230c42e7bccd4a84e02010',
+    name: 'ropsten',
+    _defaultProvider: ethDefaultProvider('ropsten'),
 };
 
 const networks: { [name: string]: Network } = {
     unspecified: {
         chainId: 0,
-        name: 'unspecified'
+        name: 'unspecified',
     },
 
-    homestead: homestead,
+    homestead,
     mainnet: homestead,
 
     morden: {
         chainId: 2,
-        name: 'morden'
+        name: 'morden',
     },
 
-    ropsten: ropsten,
+    ropsten,
     testnet: ropsten,
 
     rinkeby: {
         chainId: 4,
-        ensAddress: "0xe7410170f87102DF0055eB195163A03B7F2Bff4A",
+        ensAddress: '0xe7410170f87102DF0055eB195163A03B7F2Bff4A',
         name: 'rinkeby',
-        _defaultProvider: ethDefaultProvider('rinkeby')
+        _defaultProvider: ethDefaultProvider('rinkeby'),
     },
 
     kovan: {
         chainId: 42,
         name: 'kovan',
-        _defaultProvider: ethDefaultProvider('kovan')
+        _defaultProvider: ethDefaultProvider('kovan'),
     },
 
     classic: {
         chainId: 61,
         name: 'classic',
-        _defaultProvider: etcDefaultProvider('https://web3.gastracker.io', 'classic')
+        _defaultProvider: etcDefaultProvider('https://web3.gastracker.io', 'classic'),
     },
 
     classicTestnet: {
         chainId: 62,
         name: 'classicTestnet',
-        _defaultProvider: etcDefaultProvider('https://web3.gastracker.io/morden', 'classicTestnet')
-    }
-}
+        _defaultProvider: etcDefaultProvider('https://web3.gastracker.io/morden', 'classicTestnet'),
+    },
+};
 
 /**
  *  getNetwork
@@ -112,36 +111,36 @@ export function getNetwork(network: Networkish): Network {
     if (network == null) { return null; }
 
     if (typeof(network) === 'number') {
-        for (let name in networks) {
-            let n = networks[name];
+        for (const name in networks) {
+            const n = networks[name];
             if (n.chainId === network) {
                 return {
                     name: n.name,
                     chainId: n.chainId,
                     ensAddress: (n.ensAddress || null),
-                    _defaultProvider: (n._defaultProvider || null)
+                    _defaultProvider: (n._defaultProvider || null),
                 };
             }
         }
 
         return {
             chainId: network,
-            name: 'unknown'
+            name: 'unknown',
         };
     }
 
     if (typeof(network) === 'string') {
-        let n = networks[network];
+        const n = networks[network];
         if (n == null) { return null; }
         return {
             name: n.name,
             chainId: n.chainId,
             ensAddress: n.ensAddress,
-            _defaultProvider: (n._defaultProvider || null)
+            _defaultProvider: (n._defaultProvider || null),
         };
     }
 
-    let n  = networks[network.name];
+    const n  = networks[network.name];
 
     // Not a standard network; check that it is a valid network in general
     if (!n) {
@@ -161,6 +160,6 @@ export function getNetwork(network: Networkish): Network {
         name: network.name,
         chainId: n.chainId,
         ensAddress: (network.ensAddress || n.ensAddress || null),
-        _defaultProvider: (network._defaultProvider || n._defaultProvider || null)
+        _defaultProvider: (network._defaultProvider || n._defaultProvider || null),
     };
 }

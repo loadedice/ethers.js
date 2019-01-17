@@ -26,45 +26,45 @@ export interface Indexed {
 }
 
 export interface DeployDescription {
-    readonly inputs: Array<ParamType>;
+    readonly inputs: ParamType[];
     readonly payable: boolean;
-    encode(bytecode: string, params: Array<any>): string;
+    encode(bytecode: string, params: any[]): string;
 }
 
 export interface FunctionDescription {
-    readonly type: "call" | "transaction";
+    readonly type: 'call' | 'transaction';
     readonly name: string;
     readonly signature: string;
     readonly sighash: string;
-    readonly inputs: Array<ParamType>;
-    readonly outputs: Array<ParamType>;
+    readonly inputs: ParamType[];
+    readonly outputs: ParamType[];
     readonly payable: boolean;
     readonly gas: BigNumber;
-    encode(params: Array<any>): string;
+    encode(params: any[]): string;
     decode(data: string): any;
 }
 
 export interface EventDescription {
     readonly name: string;
     readonly signature: string;
-    readonly inputs: Array<ParamType>;
+    readonly inputs: ParamType[];
     readonly anonymous: boolean;
     readonly topic: string;
-    encodeTopics(params: Array<any>): Array<string>;
-    decode(data: string, topics?: Array<string>): any;
+    encodeTopics(params: any[]): string[];
+    decode(data: string, topics?: string[]): any;
 }
 
 export interface LogDescription {
-    readonly decode: (data: string, topics: Array<string>) => any;
+    readonly decode: (data: string, topics: string[]) => any;
     readonly name: string;
     readonly signature: string;
     readonly topic: string;
-    readonly values: any
+    readonly values: any;
 }
 
 export interface TransactionDescription {
     readonly name: string;
-    readonly args: Array<any>;
+    readonly args: any[];
     readonly signature: string;
     readonly sighash: string;
     readonly decode: (data: string) => any;
@@ -74,7 +74,7 @@ export interface TransactionDescription {
 ///////////////////////////////
 
 class _Indexed implements Indexed {
-    readonly hash: string;
+    public readonly hash: string;
     constructor(hash: string) {
         setType(this, 'Indexed');
         defineReadOnly(this, 'hash', hash);
@@ -84,7 +84,7 @@ class _Indexed implements Indexed {
 class Description {
     constructor(info: any) {
         setType(this, 'Description');
-        for (var key in info) {
+        for (const key in info) {
             defineReadOnly(this, key, deepCopy(info[key], true));
         }
         Object.freeze(this);
@@ -92,14 +92,14 @@ class Description {
 }
 
 class _DeployDescription extends Description implements DeployDescription {
-    readonly inputs: Array<ParamType>;
-    readonly payable: boolean;
+    public readonly inputs: ParamType[];
+    public readonly payable: boolean;
 
-    encode(bytecode: string, params: Array<any>): string {
+    public encode(bytecode: string, params: any[]): string {
         if (!isHexString(bytecode)) {
             errors.throwError('invalid contract bytecode', errors.INVALID_ARGUMENT, {
                 arg: 'bytecode',
-                value: bytecode
+                value: bytecode,
             });
         }
 
@@ -111,7 +111,7 @@ class _DeployDescription extends Description implements DeployDescription {
             errors.throwError('invalid constructor argument', errors.INVALID_ARGUMENT, {
                 arg: error.arg,
                 reason: error.reason,
-                value: error.value
+                value: error.value,
             });
         }
 
@@ -120,18 +120,18 @@ class _DeployDescription extends Description implements DeployDescription {
 }
 
 class _FunctionDescription extends Description implements FunctionDescription {
-    readonly type: "call" | "transaction";
-    readonly name: string;
-    readonly signature: string;
-    readonly sighash: string;
+    public readonly type: 'call' | 'transaction';
+    public readonly name: string;
+    public readonly signature: string;
+    public readonly sighash: string;
 
-    readonly inputs: Array<ParamType>;
-    readonly outputs: Array<ParamType>;
-    readonly payable: boolean;
+    public readonly inputs: ParamType[];
+    public readonly outputs: ParamType[];
+    public readonly payable: boolean;
 
-    readonly gas: BigNumber;
+    public readonly gas: BigNumber;
 
-    encode(params: Array<any>): string {
+    public encode(params: any[]): string {
         errors.checkArgumentCount(params.length, this.inputs.length, ' in interface function ' + this.name);
 
         try {
@@ -140,23 +140,23 @@ class _FunctionDescription extends Description implements FunctionDescription {
             errors.throwError('invalid input argument', errors.INVALID_ARGUMENT, {
                 arg: error.arg,
                 reason: error.reason,
-                value: error.value
+                value: error.value,
             });
         }
 
         return null;
     }
 
-    decode(data: string): any {
+    public decode(data: string): any {
         try {
             return defaultAbiCoder.decode(this.outputs, arrayify(data));
-        } catch(error) {
+        } catch (error) {
             errors.throwError('invalid data for function output', errors.INVALID_ARGUMENT, {
                 arg: 'data',
                 errorArg: error.arg,
                 errorValue: error.value,
                 value: data,
-                reason: error.reason
+                reason: error.reason,
             });
         }
     }
@@ -168,24 +168,24 @@ class Result extends Description {
 }
 
 class _EventDescription extends Description implements EventDescription {
-    readonly name: string;
-    readonly signature: string;
+    public readonly name: string;
+    public readonly signature: string;
 
-    readonly inputs: Array<ParamType>;
-    readonly anonymous: boolean;
-    readonly topic: string;
+    public readonly inputs: ParamType[];
+    public readonly anonymous: boolean;
+    public readonly topic: string;
 
-    encodeTopics(params: Array<any>): Array<string> {
+    public encodeTopics(params: any[]): string[] {
         if (params.length > this.inputs.length) {
-            errors.throwError('too many arguments for ' + this.name, errors.UNEXPECTED_ARGUMENT, { maxCount: params.length, expectedCount: this.inputs.length })
+            errors.throwError('too many arguments for ' + this.name, errors.UNEXPECTED_ARGUMENT, { maxCount: params.length, expectedCount: this.inputs.length });
         }
 
-        let topics: Array<string> = [];
+        const topics: string[] = [];
         if (!this.anonymous) { topics.push(this.topic); }
 
         params.forEach((arg, index) => {
 
-            let param = this.inputs[index];
+            const param = this.inputs[index];
 
             if (!param.indexed) {
                 if (arg != null) {
@@ -216,13 +216,13 @@ class _EventDescription extends Description implements EventDescription {
         return topics;
     }
 
-    decode(data: string, topics?: Array<string>): any {
+    public decode(data: string, topics?: string[]): any {
         // Strip the signature off of non-anonymous topics
         if (topics != null && !this.anonymous) { topics = topics.slice(1); }
 
-        let inputIndexed: Array<ParamType> = [];
-        let inputNonIndexed: Array<ParamType> = [];
-        let inputDynamic: Array<boolean> = [];
+        const inputIndexed: ParamType[] = [];
+        const inputNonIndexed: ParamType[] = [];
+        const inputDynamic: boolean[] = [];
         this.inputs.forEach(function(param, index) {
 
             if (param.indexed) {
@@ -240,19 +240,19 @@ class _EventDescription extends Description implements EventDescription {
         });
 
         if (topics != null) {
-            var resultIndexed = defaultAbiCoder.decode(
+            const resultIndexed = defaultAbiCoder.decode(
                 inputIndexed,
-                concat(topics)
+                concat(topics),
             );
         }
 
-        var resultNonIndexed = defaultAbiCoder.decode(
+        const resultNonIndexed = defaultAbiCoder.decode(
             inputNonIndexed,
-            arrayify(data)
+            arrayify(data),
         );
 
-        var result: any = {};
-        var nonIndexedIndex = 0, indexedIndex = 0;
+        const result: any = {};
+        let nonIndexedIndex = 0, indexedIndex = 0;
         this.inputs.forEach(function(input, index) {
             if (input.indexed) {
                 if (topics == null) {
@@ -276,30 +276,29 @@ class _EventDescription extends Description implements EventDescription {
     }
 }
 
-class _TransactionDescription extends Description implements TransactionDescription{
-    readonly name: string;
-    readonly args: Array<any>;
-    readonly signature: string;
-    readonly sighash: string;
-    readonly decode: (data: string) => any;
-    readonly value: BigNumber;
+class _TransactionDescription extends Description implements TransactionDescription {
+    public readonly name: string;
+    public readonly args: any[];
+    public readonly signature: string;
+    public readonly sighash: string;
+    public readonly decode: (data: string) => any;
+    public readonly value: BigNumber;
 }
 
 class _LogDescription extends Description implements LogDescription {
-    readonly name: string;
-    readonly signature: string;
-    readonly topic: string;
-    readonly decode: (data: string, topics: Array<string>) => any;
-    readonly values: any
+    public readonly name: string;
+    public readonly signature: string;
+    public readonly topic: string;
+    public readonly decode: (data: string, topics: string[]) => any;
+    public readonly values: any;
 }
-
 
 function addMethod(method: any): void {
     switch (method.type) {
         case 'constructor': {
-            let description = new _DeployDescription({
+            const description = new _DeployDescription({
                 inputs: method.inputs,
-                payable: (method.payable == null || !!method.payable)
+                payable: (method.payable == null || !!method.payable),
             });
 
             if (!this.deployFunction) { this.deployFunction = description; }
@@ -308,21 +307,21 @@ function addMethod(method: any): void {
         }
 
         case 'function': {
-            let signature = formatSignature(method).replace(/tuple/g, '');
-            let sighash = id(signature).substring(0, 10);
+            const signature = formatSignature(method).replace(/tuple/g, '');
+            const sighash = id(signature).substring(0, 10);
 
-            let description = new _FunctionDescription({
+            const description = new _FunctionDescription({
                 inputs: method.inputs,
                 outputs: method.outputs,
 
                 gas: method.gas,
 
                 payable: (method.payable == null || !!method.payable),
-                type: ((method.constant) ? 'call': 'transaction'),
+                type: ((method.constant) ? 'call' : 'transaction'),
 
                 name: method.name,
-                signature: signature,
-                sighash: sighash,
+                signature,
+                sighash,
             });
 
             // Expose the first (and hopefully unique named function)
@@ -343,15 +342,15 @@ function addMethod(method: any): void {
         }
 
         case 'event': {
-            let signature = formatSignature(method).replace(/tuple/g, '');
+            const signature = formatSignature(method).replace(/tuple/g, '');
 
-            let description = new _EventDescription({
+            const description = new _EventDescription({
                 name: method.name,
-                signature: signature,
+                signature,
 
                 inputs: method.inputs,
                 topic: id(signature),
-                anonymous: (!!method.anonymous)
+                anonymous: (!!method.anonymous),
             });
 
             // Expose the first (and hopefully unique) event name
@@ -378,10 +377,18 @@ function addMethod(method: any): void {
 }
 
 export class Interface {
-    readonly abi: Array<EventFragment | FunctionFragment>;
-    readonly functions: { [ name: string ]: _FunctionDescription };
-    readonly events: { [ name: string ]: _EventDescription };
-    readonly deployFunction: _DeployDescription;
+
+    public static isInterface(value: any): value is Interface {
+        return isType(value, 'Interface');
+    }
+
+    public static isIndexed(value: any): value is Indexed {
+        return isType(value, 'Indexed');
+    }
+    public readonly abi: Array<EventFragment | FunctionFragment>;
+    public readonly functions: { [ name: string ]: _FunctionDescription };
+    public readonly events: { [ name: string ]: _EventDescription };
+    public readonly deployFunction: _DeployDescription;
 
     constructor(abi: Array<string | ParamType> | string) {
         errors.checkNew(this, Interface);
@@ -393,7 +400,7 @@ export class Interface {
                 errors.throwError('could not parse ABI JSON', errors.INVALID_ARGUMENT, {
                     arg: 'abi',
                     errorMessage: error.message,
-                    value: abi
+                    value: abi,
                 });
             }
 
@@ -407,13 +414,13 @@ export class Interface {
         defineReadOnly(this, 'events', { });
 
         // Convert any supported ABI format into a standard ABI format
-        let _abi: Array<EventFragment | FunctionFragment> = [];
+        const _abi: Array<EventFragment | FunctionFragment> = [];
         abi.forEach((fragment) => {
             if (typeof(fragment) === 'string') {
                 fragment = parseSignature(fragment);
             }
             // @TODO: We should probable do some validation; create abiCoder.formatSignature for checking
-            _abi.push(<EventFragment | FunctionFragment>fragment);
+            _abi.push(fragment as EventFragment | FunctionFragment);
         });
 
         defineReadOnly(this, 'abi', deepCopy(_abi, true));
@@ -428,13 +435,13 @@ export class Interface {
         setType(this, 'Interface');
     }
 
-    parseTransaction(tx: { data: string, value?: BigNumberish }): _TransactionDescription {
-        var sighash = tx.data.substring(0, 10).toLowerCase();
-        for (var name in this.functions) {
+    public parseTransaction(tx: { data: string, value?: BigNumberish }): _TransactionDescription {
+        const sighash = tx.data.substring(0, 10).toLowerCase();
+        for (const name in this.functions) {
             if (name.indexOf('(') === -1) { continue; }
-            var func = this.functions[name];
+            const func = this.functions[name];
             if (func.sighash === sighash) {
-                var result = defaultAbiCoder.decode(func.inputs, '0x' + tx.data.substring(10));
+                const result = defaultAbiCoder.decode(func.inputs, '0x' + tx.data.substring(10));
                 return new _TransactionDescription({
                     args: result,
                     decode: func.decode,
@@ -449,10 +456,10 @@ export class Interface {
         return null;
     }
 
-    parseLog(log: { topics: Array<string>, data: string}): _LogDescription {
-        for (var name in this.events) {
+    public parseLog(log: { topics: string[], data: string}): _LogDescription {
+        for (const name in this.events) {
             if (name.indexOf('(') === -1) { continue; }
-            var event = this.events[name];
+            const event = this.events[name];
             if (event.anonymous) { continue; }
             if (event.topic !== log.topics[0]) { continue; }
 
@@ -463,19 +470,11 @@ export class Interface {
                 name: event.name,
                 signature: event.signature,
                 topic: event.topic,
-                values: event.decode(log.data, log.topics)
+                values: event.decode(log.data, log.topics),
             });
         }
 
         return null;
-    }
-
-    static isInterface(value: any): value is Interface {
-        return isType(value, 'Interface');
-    }
-
-    static isIndexed(value: any): value is Indexed {
-        return isType(value, 'Indexed');
     }
 
 }

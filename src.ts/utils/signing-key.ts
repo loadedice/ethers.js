@@ -23,12 +23,16 @@ import { Arrayish, Signature } from './bytes';
 
 export class SigningKey {
 
-    readonly privateKey: string;
-    readonly publicKey: string;
-    readonly address: string;
+    public static isSigningKey(value: any): value is SigningKey {
+        return isType(value, 'SigningKey');
+    }
 
-    readonly mnemonic: string;
-    readonly path: string;
+    public readonly privateKey: string;
+    public readonly publicKey: string;
+    public readonly address: string;
+
+    public readonly mnemonic: string;
+    public readonly path: string;
 
     private readonly keyPair: KeyPair;
 
@@ -53,10 +57,10 @@ export class SigningKey {
             if (privateKeyBytes.length !== 32) {
                 errors.throwError('exactly 32 bytes required', errors.INVALID_ARGUMENT, { arg: 'privateKey', value: '[REDACTED]' });
             }
-        } catch(error) {
-            var params: any = { arg: 'privateKey', reason: error.reason, value: '[REDACTED]' }
+        } catch (error) {
+            let params: any = { arg: 'privateKey', reason: error.reason, value: '[REDACTED]' };
             if (error.value) {
-                if(typeof(error.value.length) === 'number') {
+                if (typeof(error.value.length) === 'number') {
                     params.length = error.value.length;
                 }
                 params.type = typeof(error.value);
@@ -72,15 +76,11 @@ export class SigningKey {
         setType(this, 'SigningKey');
     }
 
-    signDigest(digest: Arrayish): Signature {
+    public signDigest(digest: Arrayish): Signature {
         return this.keyPair.sign(digest);
     }
 
-    computeSharedSecret(key: Arrayish | string): string {
+    public computeSharedSecret(key: Arrayish | string): string {
         return this.keyPair.computeSharedSecret(arrayify(key));
-    }
-
-    static isSigningKey(value: any): value is SigningKey {
-        return isType(value, 'SigningKey');
     }
 }

@@ -3,7 +3,7 @@ import { getAddress } from './address';
 
 export function isCrowdsaleWallet(json: string): boolean {
     try {
-        var data = JSON.parse(json);
+        let data = JSON.parse(json);
     } catch (error) { return false; }
 
     return (data.encseed && data.ethaddr);
@@ -11,7 +11,7 @@ export function isCrowdsaleWallet(json: string): boolean {
 
 export function isSecretStorageWallet(json: string): boolean {
     try {
-        var data = JSON.parse(json);
+        let data = JSON.parse(json);
     } catch (error) { return false; }
 
     if (!data.version || parseInt(data.version) !== data.version || parseInt(data.version) !== 3) {
@@ -22,9 +22,9 @@ export function isSecretStorageWallet(json: string): boolean {
     return true;
 }
 
-//export function isJsonWallet(json: string): boolean {
+// export function isJsonWallet(json: string): boolean {
 //    return (isSecretStorageWallet(json) || isCrowdsaleWallet(json));
-//}
+// }
 
 export function getJsonWalletAddress(json: string): string {
     if (isCrowdsaleWallet(json)) {
@@ -41,4 +41,3 @@ export function getJsonWalletAddress(json: string): string {
 
     return null;
 }
-

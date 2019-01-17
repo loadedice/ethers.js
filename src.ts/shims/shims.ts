@@ -1,4 +1,4 @@
 
 require('setimmediate');
 
-export const platform = "browser";
+export const platform = 'browser';

@@ -18,11 +18,11 @@ import { Networkish } from '../utils/networks';
 
 // The transaction has already been sanitized by the calls in Provider
 function getTransactionString(transaction: TransactionRequest): string {
-    var result = [];
-    for (var key in transaction) {
-        if ((<any>transaction)[key] == null) { continue; }
-        var value = hexlify((<any>transaction)[key]);
-        if ((<any>{ gasLimit: true, gasPrice: true, nonce: true, value: true })[key]) {
+    const result = [];
+    for (const key in transaction) {
+        if ((transaction as any)[key] == null) { continue; }
+        let value = hexlify((transaction as any)[key]);
+        if (({ gasLimit: true, gasPrice: true, nonce: true, value: true } as any)[key]) {
             value = hexStripZeros(value);
         }
         result.push(key + '=' + value);
@@ -38,7 +38,7 @@ function getResult(result: { status?: number, message?: string, result?: any }):
 
     if (result.status != 1 || result.message != 'OK') {
         // @TODO: not any
-        var error: any = new Error('invalid response');
+        const error: any = new Error('invalid response');
         error.result = JSON.stringify(result);
         throw error;
     }
@@ -49,14 +49,14 @@ function getResult(result: { status?: number, message?: string, result?: any }):
 function getJsonResult(result: { jsonrpc: string, result?: any, error?: { code?: number, data?: any, message?: string} } ): any {
     if (result.jsonrpc != '2.0') {
         // @TODO: not any
-        let error: any = new Error('invalid response');
+        const error: any = new Error('invalid response');
         error.result = JSON.stringify(result);
         throw error;
     }
 
     if (result.error) {
         // @TODO: not any
-        let error: any = new Error(result.error.message || 'unknown error');
+        const error: any = new Error(result.error.message || 'unknown error');
         if (result.error.code) { error.code = result.error.code; }
         if (result.error.data) { error.data = result.error.data; }
         throw error;
@@ -66,17 +66,16 @@ function getJsonResult(result: { jsonrpc: string, result?: any, error?: { code?:
 }
 
 // The blockTag was normalized as a string by the Provider pre-perform operations
-function checkLogTag(blockTag: string): number | "latest" {
+function checkLogTag(blockTag: string): number | 'latest' {
     if (blockTag === 'pending') { throw new Error('pending not supported'); }
     if (blockTag === 'latest') { return blockTag; }
 
     return parseInt(blockTag.substring(2), 16);
 }
 
-
-export class EtherscanProvider extends BaseProvider{
-    readonly baseUrl: string;
-    readonly apiKey: string;
+export class EtherscanProvider extends BaseProvider {
+    public readonly baseUrl: string;
+    public readonly apiKey: string;
     constructor(network?: Networkish, apiKey?: string) {
         super(network);
         errors.checkNew(this, EtherscanProvider);
@@ -85,7 +84,7 @@ export class EtherscanProvider extends BaseProvider{
         if (this.network) { name = this.network.name; }
 
         let baseUrl = null;
-        switch(name) {
+        switch (name) {
             case 'homestead':
                 baseUrl = 'https://api.etherscan.io';
                 break;
@@ -106,20 +105,19 @@ export class EtherscanProvider extends BaseProvider{
         defineReadOnly(this, 'apiKey', apiKey);
     }
 
-
-    perform(method: string, params: any) {
+    public perform(method: string, params: any) {
         let url = this.baseUrl;
 
         let apiKey = '';
         if (this.apiKey) { apiKey += '&apikey=' + this.apiKey; }
 
-        let get = (url: string, procFunc?: (value: any) => any) => {
+        const get = (url: string, procFunc?: (value: any) => any) => {
             return fetchJson(url, null, procFunc || getJsonResult).then((result) => {
                 this.emit('debug', {
                     action: 'perform',
                     request: url,
                     response: result,
-                    provider: this
+                    provider: this,
                 });
                 return result;
             });
@@ -145,7 +143,6 @@ export class EtherscanProvider extends BaseProvider{
                 url += '&tag=' + params.blockTag + apiKey;
                 return get(url);
 
-
             case 'getCode':
                 url += '/api?module=proxy&action=eth_getCode&address=' + params.address;
                 url += '&tag=' + params.blockTag + apiKey;
@@ -156,7 +153,6 @@ export class EtherscanProvider extends BaseProvider{
                 url += '&position=' + params.position;
                 url += '&tag=' + params.blockTag + apiKey;
                 return get(url, getJsonResult);
-
 
             case 'sendTransaction':
                 url += '/api?module=proxy&action=eth_sendRawTransaction&hex=' + params.signedTransaction;
@@ -202,12 +198,11 @@ export class EtherscanProvider extends BaseProvider{
                 url += apiKey;
                 return get(url);
 
-
             case 'call': {
                 let transaction = getTransactionString(params.transaction);
                 if (transaction) { transaction = '&' + transaction; }
                 url += '/api?module=proxy&action=eth_call' + transaction;
-                //url += '&tag=' + params.blockTag + apiKey;
+                // url += '&tag=' + params.blockTag + apiKey;
                 if (params.blockTag !== 'latest') {
                     throw new Error('EtherscanProvider does not support blockTag for call');
                 }
@@ -243,7 +238,7 @@ export class EtherscanProvider extends BaseProvider{
                         if (params.filter.topics.length > 1) {
                             throw new Error('unsupported topic format');
                         }
-                        let topic0 = params.filter.topics[0];
+                        const topic0 = params.filter.topics[0];
                         if (typeof(topic0) !== 'string' || topic0.length !== 66) {
                             throw new Error('unsupported topic0 format');
                         }
@@ -255,11 +250,11 @@ export class EtherscanProvider extends BaseProvider{
 
                 url += apiKey;
 
-                var self = this;
-                return get(url, getResult).then(function(logs: Array<any>) {
-                    var txs: { [hash: string]: string } = {};
+                const self = this;
+                return get(url, getResult).then(function(logs: any[]) {
+                    const txs: { [hash: string]: string } = {};
 
-                    var seq = Promise.resolve();
+                    let seq = Promise.resolve();
                     logs.forEach(function(log) {
                         seq = seq.then(function() {
                             if (log.blockHash != null) { return null; }
@@ -296,7 +291,7 @@ export class EtherscanProvider extends BaseProvider{
     }
 
     // @TODO: Allow startBlock and endBlock to be Promises
-    getHistory(addressOrName: string | Promise<string>, startBlock?: BlockTag, endBlock?: BlockTag): Promise<Array<TransactionResponse>> {
+    public getHistory(addressOrName: string | Promise<string>, startBlock?: BlockTag, endBlock?: BlockTag): Promise<TransactionResponse[]> {
 
         let url = this.baseUrl;
 
@@ -312,14 +307,14 @@ export class EtherscanProvider extends BaseProvider{
             url += '&endblock=' + endBlock;
             url += '&sort=asc' + apiKey;
 
-            return fetchJson(url, null, getResult).then((result: Array<any>) => {
+            return fetchJson(url, null, getResult).then((result: any[]) => {
                 this.emit('debug', {
                     action: 'getHistory',
                     request: url,
                     response: result,
-                    provider: this
+                    provider: this,
                 });
-                var output: Array<TransactionResponse> = [];
+                const output: TransactionResponse[] = [];
                 result.forEach((tx) => {
                     ['contractAddress', 'to'].forEach(function(key) {
                         if (tx[key] == '') { delete tx[key]; }
@@ -327,7 +322,7 @@ export class EtherscanProvider extends BaseProvider{
                     if (tx.creates == null && tx.contractAddress != null) {
                         tx.creates = tx.contractAddress;
                     }
-                    let item = BaseProvider.checkTransactionResponse(tx);
+                    const item = BaseProvider.checkTransactionResponse(tx);
                     if (tx.timeStamp) { item.timestamp = parseInt(tx.timeStamp); }
                     output.push(item);
                 });

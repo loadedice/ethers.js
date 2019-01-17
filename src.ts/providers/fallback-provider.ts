@@ -11,8 +11,8 @@ import * as errors from '../errors';
 //  - true is all networks match
 //  - false if any network is null
 //  - throws if any 2 networks do not match
-function checkNetworks(networks: Array<Network>): boolean {
-    var result = true;
+function checkNetworks(networks: Network[]): boolean {
+    let result = true;
 
     let check: Network = null;
     networks.forEach((network) => {
@@ -38,7 +38,7 @@ function checkNetworks(networks: Array<Network>): boolean {
         errors.throwError(
             'provider mismatch',
             errors.INVALID_ARGUMENT,
-            { arg: 'networks', value: networks }
+            { arg: 'networks', value: networks },
         );
     });
 
@@ -46,22 +46,22 @@ function checkNetworks(networks: Array<Network>): boolean {
 }
 
 export class FallbackProvider extends BaseProvider {
-    private _providers: Array<BaseProvider>;
+    private _providers: BaseProvider[];
 
-    constructor(providers: Array<BaseProvider>) {
+    constructor(providers: BaseProvider[]) {
 
         if (providers.length === 0) { throw new Error('no providers'); }
 
         // All networks are ready, we can know the network for certain
-        let ready = checkNetworks(providers.map((p) => p.network));
+        const ready = checkNetworks(providers.map((p) => p.network));
         if (ready) {
             super(providers[0].network);
 
         } else {
             // The network won't be known until all child providers know
-            let ready = Promise.all(providers.map((p) => p.getNetwork())).then((networks) => {
+            const ready = Promise.all(providers.map((p) => p.getNetwork())).then((networks) => {
                 if (!checkNetworks(networks)) {
-                    errors.throwError('getNetwork returned null', errors.UNKNOWN_ERROR, { })
+                    errors.throwError('getNetwork returned null', errors.UNKNOWN_ERROR, { });
                 }
                 return networks[0];
             });
@@ -74,24 +74,24 @@ export class FallbackProvider extends BaseProvider {
         this._providers = providers.slice(0);
     }
 
-    get providers(): Array<BaseProvider> {
+    get providers(): BaseProvider[] {
         // Return a copy, so we don't get mutated
         return this._providers.slice(0);
     }
 
-    perform(method: string, params: { [name: string]: any }): any {
+    public perform(method: string, params: { [name: string]: any }): any {
         // Creates a copy of the providers array
-        var providers = this.providers;
+        const providers = this.providers;
 
         return new Promise((resolve, reject) => {
-            var firstError: Error = null;
+            let firstError: Error = null;
             function next() {
                 if (!providers.length) {
                     reject(firstError);
                     return;
                 }
 
-                var provider = providers.shift();
+                const provider = providers.shift();
                 provider.perform(method, params).then((result) => {
                     return resolve(result);
                 }).catch((error) => {
@@ -103,4 +103,3 @@ export class FallbackProvider extends BaseProvider {
         });
     }
 }
-

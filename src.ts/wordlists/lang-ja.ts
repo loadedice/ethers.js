@@ -27,20 +27,20 @@ const data = [
     'QJEJNNJDQJEJIBSFQJEJxegBQJEJfHEPSJBmXEJFSJCDEJqXLXNJFQqXIcQsFNJFIFEJqXUJgFsJXIJBUJEJfHNFvJxEqXNJnXUJFQqD',
 
     // 10-kana words
-    'IJBEJqXZJ'
+    'IJBEJqXZJ',
 ];
 
 // Maps each character into its kana value (the index)
-const mapping = "~~AzB~X~a~KN~Q~D~S~C~G~E~Y~p~L~I~O~eH~g~V~hxyumi~~U~~Z~~v~~s~~dkoblPjfnqwMcRTr~W~~~F~~~~~Jt"
+const mapping = '~~AzB~X~a~KN~Q~D~S~C~G~E~Y~p~L~I~O~eH~g~V~hxyumi~~U~~Z~~v~~s~~dkoblPjfnqwMcRTr~W~~~F~~~~~Jt';
 
-let wordlist: Array<string> = null;
+let wordlist: string[] = null;
 
 function hex(word: string) {
     return hexlify(toUtf8Bytes(word));
 }
 
 const KiYoKu = '0xe3818de38284e3818f';
-const KyoKu = '0xe3818de38283e3818f'
+const KyoKu = '0xe3818de38283e3818f';
 
 function loadWords(lang: Wordlist) {
     if (wordlist !== null) { return; }
@@ -48,7 +48,7 @@ function loadWords(lang: Wordlist) {
     wordlist = [];
 
     // Transforms for normalizing (sort is a not quite UTF-8)
-    var transform: { [key: string]: string | boolean } = {};
+    const transform: { [key: string]: string | boolean } = {};
 
     // Delete the diacritic marks
     transform[toUtf8String([227, 130, 154])] = false;
@@ -60,15 +60,14 @@ function loadWords(lang: Wordlist) {
     transform[toUtf8String([227, 130, 131])] = toUtf8String([227, 130, 132]);
     transform[toUtf8String([227, 130, 135])] = toUtf8String([227, 130, 136]);
 
-
     // Normalize words using the transform
     function normalize(word: string) {
-        var result = '';
-        for (var i = 0; i < word.length; i++) {
+        let result = '';
+        for (let i = 0; i < word.length; i++) {
             let kana = word[i];
-            var target = transform[kana];
+            const target = transform[kana];
             if (target === false) { continue; }
-            if (target) { kana = <string>target; }
+            if (target) { kana = target as string; }
             result += kana;
         }
         return result;
@@ -85,13 +84,13 @@ function loadWords(lang: Wordlist) {
 
     // Load all the words
     for (let length = 3; length <= 9; length++) {
-        let d = data[length - 3];
+        const d = data[length - 3];
         for (let offset = 0; offset < d.length; offset += length) {
-            let word = [];
+            const word = [];
             for (let i = 0; i < length; i++) {
-                 let k = mapping.indexOf(d[offset + i]);
+                 const k = mapping.indexOf(d[offset + i]);
                  word.push(227);
-                 word.push((k & 0x40) ? 130: 129);
+                 word.push((k & 0x40) ? 130 : 129);
                  word.push((k & 0x3f) + 128);
             }
             wordlist.push(toUtf8String(word));
@@ -105,7 +104,7 @@ function loadWords(lang: Wordlist) {
     //   - kiyoku
 
     if (hex(wordlist[442]) === KiYoKu && hex(wordlist[443]) === KyoKu) {
-        let tmp = wordlist[442];
+        const tmp = wordlist[442];
         wordlist[442] = wordlist[443];
         wordlist[443] = tmp;
     }
@@ -121,22 +120,22 @@ class LangJa extends Wordlist {
         super('ja');
     }
 
-    getWord(index: number): string {
+    public getWord(index: number): string {
         loadWords(this);
         return wordlist[index];
     }
 
-    getWordIndex(word: string): number {
+    public getWordIndex(word: string): number {
         loadWords(this);
         return wordlist.indexOf(word);
     }
 
-    split(mnemonic: string): Array<string> {
+    public split(mnemonic: string): string[] {
         errors.checkNormalize();
         return mnemonic.split(/(?:\u3000| )+/g);
     }
 
-    join(words: Array<string>): string {
+    public join(words: string[]): string {
         return words.join('\u3000');
     }
 }
@@ -145,4 +144,3 @@ const langJa = new LangJa();
 register(langJa);
 
 export { langJa };
-

@@ -12,7 +12,6 @@ import { arrayify, concat, hexlify, padZeros } from './bytes';
 import { toUtf8Bytes, toUtf8String } from './utf8';
 import { deepCopy, defineReadOnly, shallowCopy } from './properties';
 
-
 ///////////////////////////////
 // Imported Types
 
@@ -24,38 +23,38 @@ import { BigNumberish } from './bignumber';
 
 export type CoerceFunc = (type: string, value: any) => any;
 
-export type ParamType = {
-    name?: string,
-    type: string,
-    indexed?: boolean,
-    components?: Array<any>
-};
+export interface ParamType {
+    name?: string;
+    type: string;
+    indexed?: boolean;
+    components?: any[];
+}
 
 // @TODO: should this just be a combined Fragment?
 
-export type EventFragment = {
-    type: string
-    name: string,
+export interface EventFragment {
+    type: string;
+    name: string;
 
-    anonymous: boolean,
+    anonymous: boolean;
 
-    inputs: Array<ParamType>,
-};
+    inputs: ParamType[];
+}
 
-export type FunctionFragment = {
-    type: string
-    name: string,
+export interface FunctionFragment {
+    type: string;
+    name: string;
 
-    constant: boolean,
+    constant: boolean;
 
-    inputs: Array<ParamType>,
-    outputs: Array<ParamType>,
+    inputs: ParamType[];
+    outputs: ParamType[];
 
-    payable: boolean,
-    stateMutability: string,
+    payable: boolean;
+    stateMutability: string;
 
-    gas: BigNumber
-};
+    gas: BigNumber;
+}
 
 ///////////////////////////////
 
@@ -64,17 +63,16 @@ const paramTypeNumber = new RegExp(/^(u?int)([0-9]*)$/);
 const paramTypeArray = new RegExp(/^(.*)\[([0-9]*)\]$/);
 
 export const defaultCoerceFunc: CoerceFunc = function(type: string, value: any): any {
-    var match = type.match(paramTypeNumber)
+    const match = type.match(paramTypeNumber);
     if (match && parseInt(match[2]) <= 48) { return value.toNumber(); }
     return value;
-}
-
+};
 
 ///////////////////////////////////
 // Parsing for Solidity Signatures
 
-const regexParen = new RegExp("^([^)(]*)\\((.*)\\)([^)(]*)$");
-const regexIdentifier = new RegExp("^[A-Za-z_][A-Za-z0-9_]*$");
+const regexParen = new RegExp('^([^)(]*)\\((.*)\\)([^)(]*)$');
+const regexIdentifier = new RegExp('^[A-Za-z_][A-Za-z0-9_]*$');
 
 function verifyType(type: string): string {
 
@@ -88,37 +86,36 @@ function verifyType(type: string): string {
     return type;
 }
 
-type ParseState = {
-    allowArray?: boolean,
-    allowName?: boolean,
-    allowParams?: boolean,
-    allowType?: boolean,
-    readArray?: boolean,
-};
+interface ParseState {
+    allowArray?: boolean;
+    allowName?: boolean;
+    allowParams?: boolean;
+    allowType?: boolean;
+    readArray?: boolean;
+}
 
-type ParseNode = {
-    parent?: any,
-    type?: string,
-    name?: string,
-    state?: ParseState,
-    indexed?: boolean,
-    components?: Array<any>
-};
-
+interface ParseNode {
+    parent?: any;
+    type?: string;
+    name?: string;
+    state?: ParseState;
+    indexed?: boolean;
+    components?: any[];
+}
 
 function parseParam(param: string, allowIndexed?: boolean): ParamType {
 
-    let originalParam = param;
+    const originalParam = param;
     function throwError(i: number) {
         throw new Error('unexpected character "' + originalParam[i] + '" at position ' + i + ' in "' + originalParam + '"');
     }
     param = param.replace(/\s/g, ' ');
 
-    var parent: ParseNode = { type: '', name: '', state: { allowType: true } };
-    var node = parent;
+    const parent: ParseNode = { type: '', name: '', state: { allowType: true } };
+    let node = parent;
 
-    for (var i = 0; i < param.length; i++) {
-        var c = param[i];
+    for (let i = 0; i < param.length; i++) {
+        const c = param[i];
         switch (c) {
             case '(':
                 if (!node.state.allowParams) { throwError(i); }
@@ -136,7 +133,7 @@ function parseParam(param: string, allowIndexed?: boolean): ParamType {
                 }
                 node.type = verifyType(node.type);
 
-                var child = node;
+                const child = node;
                 node = node.parent;
                 if (!node) { throwError(i); }
                 delete child.parent;
@@ -153,7 +150,7 @@ function parseParam(param: string, allowIndexed?: boolean): ParamType {
                 }
                 node.type = verifyType(node.type);
 
-                var sibling: ParseNode = { type: '', name: '', parent: node.parent, state: { allowType: true } };
+                const sibling: ParseNode = { type: '', name: '', parent: node.parent, state: { allowType: true } };
                 node.parent.components.push(sibling);
                 delete node.parent;
                 node = sibling;
@@ -222,7 +219,7 @@ function parseParam(param: string, allowIndexed?: boolean): ParamType {
         }
     }
 
-    if (node.parent) { throw new Error("unexpected eof"); }
+    if (node.parent) { throw new Error('unexpected eof'); }
 
     delete parent.state;
 
@@ -233,21 +230,20 @@ function parseParam(param: string, allowIndexed?: boolean): ParamType {
 
     parent.type = verifyType(parent.type);
 
-    return (<ParamType>parent);
+    return (parent as ParamType);
 }
-
 
 // @TODO: Better return type
 function parseSignatureEvent(fragment: string): EventFragment {
 
-    var abi: EventFragment = {
+    const abi: EventFragment = {
         anonymous: false,
         inputs: [],
         name: '',
-        type: 'event'
-    }
+        type: 'event',
+    };
 
-    var match = fragment.match(regexParen);
+    const match = fragment.match(regexParen);
     if (!match) { throw new Error('invalid event: ' + fragment); }
 
     abi.name = match[1].trim();
@@ -259,7 +255,7 @@ function parseSignatureEvent(fragment: string): EventFragment {
     });
 
     match[3].split(' ').forEach(function(modifier) {
-        switch(modifier) {
+        switch (modifier) {
             case 'anonymous':
                 abi.anonymous = true;
                 break;
@@ -278,7 +274,7 @@ function parseSignatureEvent(fragment: string): EventFragment {
 }
 
 function parseSignatureFunction(fragment: string): FunctionFragment {
-    var abi: FunctionFragment = {
+    const abi: FunctionFragment = {
         constant: false,
         gas: null,
         inputs: [],
@@ -286,7 +282,7 @@ function parseSignatureFunction(fragment: string): FunctionFragment {
         outputs: [],
         payable: false,
         stateMutability: null,  // @TODO: Should this be initialized to 'nonpayable'?
-        type: 'function'
+        type: 'function',
     };
 
     let comps = fragment.split('@');
@@ -302,7 +298,7 @@ function parseSignatureFunction(fragment: string): FunctionFragment {
     }
 
     comps = fragment.split(' returns ');
-    var left = comps[0].match(regexParen);
+    const left = comps[0].match(regexParen);
     if (!left) { throw new Error('invalid signature'); }
 
     abi.name = left[1].trim();
@@ -342,7 +338,7 @@ function parseSignatureFunction(fragment: string): FunctionFragment {
 
     // We have outputs
     if (comps.length > 1) {
-        var right = comps[1].match(regexParen);
+        const right = comps[1].match(regexParen);
         if (right[1].trim() != '' || right[3].trim() != '') {
             throw new Error('unexpected tokens');
         }
@@ -353,7 +349,7 @@ function parseSignatureFunction(fragment: string): FunctionFragment {
     }
 
     if (abi.name === 'constructor') {
-        abi.type = "constructor";
+        abi.type = 'constructor';
 
         if (abi.outputs.length) {
             throw new Error('constructor may not have outputs');
@@ -381,7 +377,7 @@ export function formatSignature(fragment: EventFragment | FunctionFragment): str
 }
 
 export function parseSignature(fragment: string): EventFragment | FunctionFragment {
-    if(typeof(fragment) === 'string') {
+    if (typeof(fragment) === 'string') {
         // Make sure the "returns" is surrounded by a space and all whitespace is exactly one space
         fragment = fragment.replace(/\s/g, ' ');
         fragment = fragment.replace(/\(/g, ' (').replace(/\)/g, ') ').replace(/\s+/g, ' ');
@@ -401,17 +397,16 @@ export function parseSignature(fragment: string): EventFragment | FunctionFragme
     throw new Error('unknown signature');
 }
 
-
 ///////////////////////////////////
 // Coders
 
-type DecodedResult = { consumed: number, value: any };
+interface DecodedResult { consumed: number; value: any; }
 abstract class Coder {
-    readonly coerceFunc: CoerceFunc;
-    readonly name: string;
-    readonly type: string;
-    readonly localName: string;
-    readonly dynamic: boolean;
+    public readonly coerceFunc: CoerceFunc;
+    public readonly name: string;
+    public readonly type: string;
+    public readonly localName: string;
+    public readonly dynamic: boolean;
     constructor(coerceFunc: CoerceFunc, name: string, type: string, localName: string, dynamic: boolean) {
         this.coerceFunc = coerceFunc;
         this.name = name;
@@ -420,8 +415,8 @@ abstract class Coder {
         this.dynamic = dynamic;
     }
 
-    abstract encode(value: any): Uint8Array;
-    abstract decode(data: Uint8Array, offset: number): DecodedResult;
+    public abstract encode(value: any): Uint8Array;
+    public abstract decode(data: Uint8Array, offset: number): DecodedResult;
 }
 
 // Clones the functionality of an existing Coder, but without a localName
@@ -431,8 +426,8 @@ class CoderAnonymous extends Coder {
         super(coder.coerceFunc, coder.name, coder.type, undefined, coder.dynamic);
         defineReadOnly(this, 'coder', coder);
     }
-    encode(value: any): Uint8Array { return this.coder.encode(value); }
-    decode(data: Uint8Array, offset: number): DecodedResult { return this.coder.decode(data, offset); }
+    public encode(value: any): Uint8Array { return this.coder.encode(value); }
+    public decode(data: Uint8Array, offset: number): DecodedResult { return this.coder.decode(data, offset); }
 }
 
 class CoderNull extends Coder {
@@ -440,31 +435,31 @@ class CoderNull extends Coder {
         super(coerceFunc, 'null', '', localName, false);
     }
 
-    encode(value: any): Uint8Array {
+    public encode(value: any): Uint8Array {
         return arrayify([]);
     }
 
-    decode(data: Uint8Array, offset: number): DecodedResult {
+    public decode(data: Uint8Array, offset: number): DecodedResult {
         if (offset > data.length) { throw new Error('invalid null'); }
         return {
             consumed: 0,
-            value: this.coerceFunc('null', undefined)
-        }
+            value: this.coerceFunc('null', undefined),
+        };
     }
 }
 
 class CoderNumber extends Coder {
-    readonly size: number;
-    readonly signed: boolean;
+    public readonly size: number;
+    public readonly signed: boolean;
     constructor(coerceFunc: CoerceFunc, size: number, signed: boolean, localName: string) {
-        const name = ((signed ? 'int': 'uint') + (size * 8));
+        const name = ((signed ? 'int' : 'uint') + (size * 8));
         super(coerceFunc, name, name, localName, false);
 
         this.size = size;
         this.signed = signed;
     }
 
-    encode(value: BigNumberish): Uint8Array {
+    public encode(value: BigNumberish): Uint8Array {
         try {
             let v = bigNumberify(value);
             if (this.signed) {
@@ -487,22 +482,22 @@ class CoderNumber extends Coder {
             errors.throwError('invalid number value', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: this.name,
-                value: value
+                value,
             });
         }
         return null;
     }
 
-    decode(data: Uint8Array, offset: number): DecodedResult {
+    public decode(data: Uint8Array, offset: number): DecodedResult {
         if (data.length < offset + 32) {
             errors.throwError('insufficient data for ' + this.name + ' type', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: this.name,
-                value: hexlify(data.slice(offset, offset + 32))
+                value: hexlify(data.slice(offset, offset + 32)),
             });
         }
-        var junkLength = 32 - this.size;
-        var value = bigNumberify(data.slice(offset + junkLength, offset + 32));
+        const junkLength = 32 - this.size;
+        let value = bigNumberify(data.slice(offset + junkLength, offset + 32));
         if (this.signed) {
             value = value.fromTwos(this.size * 8);
         } else {
@@ -512,79 +507,79 @@ class CoderNumber extends Coder {
         return {
             consumed: 32,
             value: this.coerceFunc(this.name, value),
-        }
+        };
     }
 }
-var uint256Coder = new CoderNumber(function(type: string, value: any) { return value; }, 32, false, 'none');
+const uint256Coder = new CoderNumber(function(type: string, value: any) { return value; }, 32, false, 'none');
 
 class CoderBoolean extends Coder {
     constructor(coerceFunc: CoerceFunc, localName: string) {
         super(coerceFunc, 'bool', 'bool', localName, false);
     }
 
-    encode(value: boolean): Uint8Array {
-        return uint256Coder.encode(!!value ? 1: 0);
+    public encode(value: boolean): Uint8Array {
+        return uint256Coder.encode(!!value ? 1 : 0);
     }
 
-    decode(data: Uint8Array, offset: number): DecodedResult {
+    public decode(data: Uint8Array, offset: number): DecodedResult {
         try {
-            var result = uint256Coder.decode(data, offset);
+            const result = uint256Coder.decode(data, offset);
         } catch (error) {
             if (error.reason === 'insufficient data for uint256 type') {
                 errors.throwError('insufficient data for boolean type', errors.INVALID_ARGUMENT, {
                     arg: this.localName,
                     coderType: 'boolean',
-                    value: error.value
+                    value: error.value,
                 });
             }
             throw error;
         }
         return {
             consumed: result.consumed,
-            value: this.coerceFunc('bool', !result.value.isZero())
-        }
+            value: this.coerceFunc('bool', !result.value.isZero()),
+        };
     }
 }
 
 class CoderFixedBytes extends Coder {
-    readonly length: number;
+    public readonly length: number;
     constructor(coerceFunc: CoerceFunc, length: number, localName: string) {
         const name = ('bytes' + length);
         super(coerceFunc, name, name, localName, false);
         this.length = length;
     }
 
-    encode(value: Arrayish): Uint8Array {
-        var result = new Uint8Array(32);
+    public encode(value: Arrayish): Uint8Array {
+        const result = new Uint8Array(32);
 
         try {
-            let data = arrayify(value);
+            const data = arrayify(value);
             if (data.length !== this.length) { throw new Error('incorrect data length'); }
             result.set(data);
         } catch (error) {
             errors.throwError('invalid ' + this.name + ' value', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: this.name,
-                value: (error.value || value)
+                value: (error.value || value),
             });
         }
 
         return result;
     }
 
-    decode(data: Uint8Array, offset: number): DecodedResult {
+    public decode(data: Uint8Array, offset: number): DecodedResult {
         if (data.length < offset + 32) {
             errors.throwError('insufficient data for ' + name + ' type', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: this.name,
-                value: hexlify(data.slice(offset, offset + 32))
+                value: hexlify(data.slice(offset, offset + 32)),
             });
         }
 
         return {
             consumed: 32,
-            value: this.coerceFunc(this.name, hexlify(data.slice(offset, offset + this.length)))
-        }
+            value: this.coerceFunc(this.name, hexlify(data.slice(offset, offset + this.length))),
+        };
     }
 }
 
@@ -592,42 +587,42 @@ class CoderAddress extends Coder {
     constructor(coerceFunc: CoerceFunc, localName: string) {
         super(coerceFunc, 'address', 'address', localName, false);
     }
-    encode(value: string): Uint8Array {
-        let result = new Uint8Array(32);
+    public encode(value: string): Uint8Array {
+        const result = new Uint8Array(32);
         try {
             result.set(arrayify(getAddress(value)), 12);
         } catch (error) {
             errors.throwError('invalid address', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: 'address',
-                value: value
+                value,
             });
         }
         return result;
     }
-    decode(data: Uint8Array, offset: number): DecodedResult {
+    public decode(data: Uint8Array, offset: number): DecodedResult {
         if (data.length < offset + 32) {
             errors.throwError('insufficuent data for address type', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: 'address',
-                value: hexlify(data.slice(offset, offset + 32))
+                value: hexlify(data.slice(offset, offset + 32)),
             });
         }
         return {
             consumed: 32,
-            value: this.coerceFunc('address', getAddress(hexlify(data.slice(offset + 12, offset + 32))))
-       }
+            value: this.coerceFunc('address', getAddress(hexlify(data.slice(offset + 12, offset + 32)))),
+       };
     }
 }
 
 function _encodeDynamicBytes(value: Uint8Array): Uint8Array {
-    var dataLength = 32 * Math.ceil(value.length / 32);
-    var padding = new Uint8Array(dataLength - value.length);
+    const dataLength = 32 * Math.ceil(value.length / 32);
+    const padding = new Uint8Array(dataLength - value.length);
 
     return concat([
         uint256Coder.encode(value.length),
         value,
-        padding
+        padding,
     ]);
 }
 
@@ -636,18 +631,18 @@ function _decodeDynamicBytes(data: Uint8Array, offset: number, localName: string
         errors.throwError('insufficient data for dynamicBytes length', errors.INVALID_ARGUMENT, {
             arg: localName,
             coderType: 'dynamicBytes',
-            value: hexlify(data.slice(offset, offset + 32))
+            value: hexlify(data.slice(offset, offset + 32)),
         });
     }
 
-    var length = uint256Coder.decode(data, offset).value;
+    let length = uint256Coder.decode(data, offset).value;
     try {
         length = length.toNumber();
     } catch (error) {
         errors.throwError('dynamic bytes count too large', errors.INVALID_ARGUMENT, {
             arg: localName,
             coderType: 'dynamicBytes',
-            value: length.toString()
+            value: length.toString(),
         });
     }
 
@@ -655,35 +650,35 @@ function _decodeDynamicBytes(data: Uint8Array, offset: number, localName: string
         errors.throwError('insufficient data for dynamicBytes type', errors.INVALID_ARGUMENT, {
             arg: localName,
             coderType: 'dynamicBytes',
-            value: hexlify(data.slice(offset, offset + 32 + length))
+            value: hexlify(data.slice(offset, offset + 32 + length)),
         });
     }
 
     return {
         consumed: 32 + 32 * Math.ceil(length / 32),
         value: data.slice(offset + 32, offset + 32 + length),
-    }
+    };
 }
 
 class CoderDynamicBytes extends Coder {
     constructor(coerceFunc: CoerceFunc, localName: string) {
         super(coerceFunc, 'bytes', 'bytes', localName, true);
     }
-    encode(value: Arrayish): Uint8Array {
+    public encode(value: Arrayish): Uint8Array {
         try {
             return _encodeDynamicBytes(arrayify(value));
         } catch (error) {
             errors.throwError('invalid bytes value', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: 'bytes',
-                value: error.value
+                value: error.value,
             });
         }
         return null;
     }
 
-    decode(data: Uint8Array, offset: number): DecodedResult {
-        var result = _decodeDynamicBytes(data, offset, this.localName);
+    public decode(data: Uint8Array, offset: number): DecodedResult {
+        const result = _decodeDynamicBytes(data, offset, this.localName);
         result.value = this.coerceFunc('bytes', hexlify(result.value));
         return result;
     }
@@ -694,19 +689,19 @@ class CoderString extends Coder {
         super(coerceFunc, 'string', 'string', localName, true);
     }
 
-    encode(value: string): Uint8Array {
+    public encode(value: string): Uint8Array {
         if (typeof(value) !== 'string') {
             errors.throwError('invalid string value', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: 'string',
-                value: value
+                value,
             });
         }
         return _encodeDynamicBytes(toUtf8Bytes(value));
     }
 
-    decode(data: Uint8Array, offset: number): DecodedResult {
-        var result = _decodeDynamicBytes(data, offset, this.localName);
+    public decode(data: Uint8Array, offset: number): DecodedResult {
+        const result = _decodeDynamicBytes(data, offset, this.localName);
         result.value = this.coerceFunc('string', toUtf8String(result.value));
         return result;
     }
@@ -716,39 +711,39 @@ function alignSize(size: number): number {
     return 32 * Math.ceil(size / 32);
 }
 
-function pack(coders: Array<Coder>, values: Array<any>): Uint8Array {
+function pack(coders: Coder[], values: any[]): Uint8Array {
 
     if (Array.isArray(values)) {
        // do nothing
 
     } else if (values && typeof(values) === 'object') {
-        var arrayValues: Array<any> = [];
+        const arrayValues: any[] = [];
         coders.forEach(function(coder) {
-            arrayValues.push((<any>values)[coder.localName]);
+            arrayValues.push((values as any)[coder.localName]);
         });
         values = arrayValues;
 
     } else {
         errors.throwError('invalid tuple value', errors.INVALID_ARGUMENT, {
             coderType: 'tuple',
-            value: values
+            value: values,
         });
     }
 
     if (coders.length !== values.length) {
         errors.throwError('types/value length mismatch', errors.INVALID_ARGUMENT, {
             coderType: 'tuple',
-            value: values
+            value: values,
         });
     }
 
-    var parts: Array<{ dynamic: boolean, value: any }> = [];
+    const parts: Array<{ dynamic: boolean, value: any }> = [];
 
     coders.forEach(function(coder, index) {
         parts.push({ dynamic: coder.dynamic, value: coder.encode(values[index]) });
     });
 
-    var staticSize = 0, dynamicSize = 0;
+    let staticSize = 0, dynamicSize = 0;
     parts.forEach(function(part) {
         if (part.dynamic) {
             staticSize += 32;
@@ -758,20 +753,20 @@ function pack(coders: Array<Coder>, values: Array<any>): Uint8Array {
         }
     });
 
-    var offset = 0, dynamicOffset = staticSize;
-    var data = new Uint8Array(staticSize + dynamicSize);
+    let offset = 0, dynamicOffset = staticSize;
+    const data = new Uint8Array(staticSize + dynamicSize);
 
     parts.forEach(function(part) {
         if (part.dynamic) {
-            //uint256Coder.encode(dynamicOffset).copy(data, offset);
+            // uint256Coder.encode(dynamicOffset).copy(data, offset);
             data.set(uint256Coder.encode(dynamicOffset), offset);
             offset += 32;
 
-            //part.value.copy(data, dynamicOffset);  @TODO
+            // part.value.copy(data, dynamicOffset);  @TODO
             data.set(part.value, dynamicOffset);
             dynamicOffset += alignSize(part.value.length);
         } else {
-            //part.value.copy(data, offset);  @TODO
+            // part.value.copy(data, offset);  @TODO
             data.set(part.value, offset);
             offset += alignSize(part.value.length);
         }
@@ -780,18 +775,18 @@ function pack(coders: Array<Coder>, values: Array<any>): Uint8Array {
     return data;
 }
 
-function unpack(coders: Array<Coder>, data: Uint8Array, offset: number): DecodedResult {
-    var baseOffset = offset;
-    var consumed = 0;
-    var value: any = [];
+function unpack(coders: Coder[], data: Uint8Array, offset: number): DecodedResult {
+    const baseOffset = offset;
+    let consumed = 0;
+    const value: any = [];
     coders.forEach(function(coder) {
         if (coder.dynamic) {
-            var dynamicOffset = uint256Coder.decode(data, offset);
-            var result = coder.decode(data, baseOffset + dynamicOffset.value.toNumber());
+            const dynamicOffset = uint256Coder.decode(data, offset);
+            const result = coder.decode(data, baseOffset + dynamicOffset.value.toNumber());
             // The dynamic part is leap-frogged somewhere else; doesn't count towards size
             result.consumed = dynamicOffset.consumed;
         } else {
-            var result = coder.decode(data, offset);
+            const result = coder.decode(data, offset);
         }
 
         if (result.value != undefined) {
@@ -814,16 +809,16 @@ function unpack(coders: Array<Coder>, data: Uint8Array, offset: number): Decoded
     });
 
     return {
-        value: value,
-        consumed: consumed
-    }
+        value,
+        consumed,
+    };
 }
 
 class CoderArray extends Coder {
-    readonly coder: Coder;
-    readonly length: number;
+    public readonly coder: Coder;
+    public readonly length: number;
     constructor(coerceFunc: CoerceFunc, coder: Coder, length: number, localName: string) {
-        const type = (coder.type + '[' + (length >= 0 ? length: '') + ']');
+        const type = (coder.type + '[' + (length >= 0 ? length : '') + ']');
         const dynamic = (length === -1 || coder.dynamic);
         super(coerceFunc, 'array', type, localName, dynamic);
 
@@ -831,66 +826,66 @@ class CoderArray extends Coder {
         this.length = length;
     }
 
-    encode(value: Array<any>): Uint8Array {
+    public encode(value: any[]): Uint8Array {
         if (!Array.isArray(value)) {
             errors.throwError('expected array value', errors.INVALID_ARGUMENT, {
                 arg: this.localName,
                 coderType: 'array',
-                value: value
+                value,
             });
         }
 
-        var count = this.length;
+        let count = this.length;
 
-        var result = new Uint8Array(0);
+        let result = new Uint8Array(0);
         if (count === -1) {
             count = value.length;
             result = uint256Coder.encode(count);
         }
 
-        errors.checkArgumentCount(count, value.length, ' in coder array' + (this.localName? (" "+ this.localName): ""));
+        errors.checkArgumentCount(count, value.length, ' in coder array' + (this.localName ? (' ' + this.localName) : ''));
 
-        var coders = [];
-        for (var i = 0; i < value.length; i++) { coders.push(this.coder); }
+        const coders = [];
+        for (let i = 0; i < value.length; i++) { coders.push(this.coder); }
 
         return concat([result, pack(coders, value)]);
     }
 
-    decode(data: Uint8Array, offset: number) {
+    public decode(data: Uint8Array, offset: number) {
         // @TODO:
-        //if (data.length < offset + length * 32) { throw new Error('invalid array'); }
+        // if (data.length < offset + length * 32) { throw new Error('invalid array'); }
 
-        var consumed = 0;
+        let consumed = 0;
 
-        var count = this.length;
+        let count = this.length;
 
         if (count === -1) {
             try {
-                var decodedLength = uint256Coder.decode(data, offset);
+                const decodedLength = uint256Coder.decode(data, offset);
             } catch (error) {
                 errors.throwError('insufficient data for dynamic array length', errors.INVALID_ARGUMENT, {
                     arg: this.localName,
                     coderType: 'array',
-                    value: error.value
+                    value: error.value,
                 });
              }
-             try {
+            try {
                  count = decodedLength.value.toNumber();
              } catch (error) {
                  errors.throwError('array count too large', errors.INVALID_ARGUMENT, {
                      arg: this.localName,
                      coderType: 'array',
-                     value: decodedLength.value.toString()
+                     value: decodedLength.value.toString(),
                  });
              }
-             consumed += decodedLength.consumed;
-             offset += decodedLength.consumed;
+            consumed += decodedLength.consumed;
+            offset += decodedLength.consumed;
         }
 
-        var coders = [];
-        for (var i = 0; i < count; i++) { coders.push(new CoderAnonymous(this.coder)); }
+        const coders = [];
+        for (let i = 0; i < count; i++) { coders.push(new CoderAnonymous(this.coder)); }
 
-        var result = unpack(coders, data, offset);
+        const result = unpack(coders, data, offset);
         result.consumed += consumed;
         result.value = this.coerceFunc(this.type, result.value);
         return result;
@@ -898,26 +893,26 @@ class CoderArray extends Coder {
 }
 
 class CoderTuple extends Coder {
-    readonly coders: Array<Coder>;
-    constructor(coerceFunc: CoerceFunc, coders: Array<Coder>, localName: string) {
-        var dynamic = false;
-        var types: Array<string> = [];
+    public readonly coders: Coder[];
+    constructor(coerceFunc: CoerceFunc, coders: Coder[], localName: string) {
+        let dynamic = false;
+        const types: string[] = [];
         coders.forEach(function(coder) {
             if (coder.dynamic) { dynamic = true; }
             types.push(coder.type);
         });
-        var type = ('tuple(' + types.join(',') + ')');
+        const type = ('tuple(' + types.join(',') + ')');
 
         super(coerceFunc, 'tuple', type, localName, dynamic);
         this.coders = coders;
     }
 
-    encode(value: Array<any>): Uint8Array {
+    public encode(value: any[]): Uint8Array {
         return pack(this.coders, value);
     }
 
-    decode(data: Uint8Array, offset: number): DecodedResult {
-        var result = unpack(this.coders, data, offset);
+    public decode(data: Uint8Array, offset: number): DecodedResult {
+        const result = unpack(this.coders, data, offset);
         result.value = this.coerceFunc(this.type, result.value);
         return result;
     }
@@ -928,14 +923,14 @@ function getTypes(coders) {
     return type.substring(6, type.length - 1);
 }
 */
-function splitNesting(value: string): Array<any> {
+function splitNesting(value: string): any[] {
     value = value.trim();
 
-    var result = [];
-    var accum = '';
-    var depth = 0;
-    for (var offset = 0; offset < value.length; offset++) {
-        var c = value[offset];
+    const result = [];
+    let accum = '';
+    let depth = 0;
+    for (let offset = 0; offset < value.length; offset++) {
+        const c = value[offset];
         if (c === ',' && depth === 0) {
             result.push(accum);
             accum = '';
@@ -964,9 +959,9 @@ const paramTypeSimple: { [key: string]: any } = {
     bytes: CoderDynamicBytes,
 };
 
-function getTupleParamCoder(coerceFunc: CoerceFunc, components: Array<any>, localName: string): CoderTuple {
+function getTupleParamCoder(coerceFunc: CoerceFunc, components: any[], localName: string): CoderTuple {
     if (!components) { components = []; }
-    var coders: Array<Coder> = [];
+    const coders: Coder[] = [];
     components.forEach(function(component) {
         coders.push(getParamCoder(coerceFunc, component));
     });
@@ -975,35 +970,35 @@ function getTupleParamCoder(coerceFunc: CoerceFunc, components: Array<any>, loca
 }
 
 function getParamCoder(coerceFunc: CoerceFunc, param: ParamType): Coder {
-    var coder = paramTypeSimple[param.type];
+    const coder = paramTypeSimple[param.type];
     if (coder) { return new coder(coerceFunc, param.name); }
-    var match = param.type.match(paramTypeNumber);
+    let match = param.type.match(paramTypeNumber);
     if (match) {
-        let size = parseInt(match[2] || "256");
+        const size = parseInt(match[2] || '256');
         if (size === 0 || size > 256 || (size % 8) !== 0) {
             errors.throwError('invalid ' + match[1] + ' bit length', errors.INVALID_ARGUMENT, {
                 arg: 'param',
-                value: param
+                value: param,
             });
         }
         return new CoderNumber(coerceFunc, size / 8, (match[1] === 'int'), param.name);
     }
 
-    var match = param.type.match(paramTypeBytes);
+    let match = param.type.match(paramTypeBytes);
     if (match) {
-        let size = parseInt(match[1]);
+        const size = parseInt(match[1]);
         if (size === 0 || size > 32) {
             errors.throwError('invalid bytes length', errors.INVALID_ARGUMENT, {
                 arg: 'param',
-                value: param
+                value: param,
             });
         }
         return new CoderFixedBytes(coerceFunc, size, param.name);
     }
 
-    var match = param.type.match(paramTypeArray);
+    const match = param.type.match(paramTypeArray);
     if (match) {
-        let size = parseInt(match[2] || "-1");
+        const size = parseInt(match[2] || '-1');
         param = shallowCopy(param);
         param.type = match[1];
         param = deepCopy(param);
@@ -1020,15 +1015,14 @@ function getParamCoder(coerceFunc: CoerceFunc, param: ParamType): Coder {
 
     errors.throwError('invalid type', errors.INVALID_ARGUMENT, {
         arg: 'type',
-        value: param.type
+        value: param.type,
     });
 
     return null;
 }
 
-
 export class AbiCoder {
-    readonly coerceFunc: CoerceFunc;
+    public readonly coerceFunc: CoerceFunc;
     constructor(coerceFunc?: CoerceFunc) {
         errors.checkNew(this, AbiCoder);
 
@@ -1036,16 +1030,16 @@ export class AbiCoder {
         defineReadOnly(this, 'coerceFunc', coerceFunc);
     }
 
-    encode(types: Array<string | ParamType>, values: Array<any>): string {
+    public encode(types: Array<string | ParamType>, values: any[]): string {
 
         if (types.length !== values.length) {
             errors.throwError('types/values length mismatch', errors.INVALID_ARGUMENT, {
                 count: { types: types.length, values: values.length },
-                value: { types: types, values: values }
+                value: { types, values },
             });
         }
 
-        var coders: Array<Coder> = [];
+        const coders: Coder[] = [];
         types.forEach(function(type) {
             // Convert types to type objects
             //   - "uint foo" => { type: "uint", name: "foo" }
@@ -1065,9 +1059,9 @@ export class AbiCoder {
         return hexlify(new CoderTuple(this.coerceFunc, coders, '_').encode(values));
     }
 
-    decode(types: Array<string | ParamType>, data: Arrayish): any {
+    public decode(types: Array<string | ParamType>, data: Arrayish): any {
 
-        var coders: Array<Coder> = [];
+        const coders: Coder[] = [];
         types.forEach(function(type) {
 
             // See encode for details

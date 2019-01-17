@@ -24,13 +24,11 @@ import { formatBytes32String, parseBytes32String, toUtf8Bytes, toUtf8String } fr
 import { commify, formatEther, parseEther, formatUnits, parseUnits } from './units';
 import { fetchJson } from './web';
 
-
 ////////////////////////
 // Enums
 
 import { SupportedAlgorithms } from './hmac';
 import { UnicodeNormalizationForm } from './utf8';
-
 
 ////////////////////////
 // Types
@@ -136,13 +134,11 @@ export {
     recoverPublicKey,
     verifyMessage,
 
-
     ////////////////////////
     // Enums
 
     SupportedAlgorithms,
     UnicodeNormalizationForm,
-
 
     ////////////////////////
     // Types
@@ -181,5 +177,4 @@ export {
 
     Wordlist,
 
-}
-
+};

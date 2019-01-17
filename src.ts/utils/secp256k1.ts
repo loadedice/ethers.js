@@ -18,7 +18,7 @@ import { Arrayish, Signature } from './bytes';
 
 ///////////////////////////////
 
-let _curve: EC = null
+let _curve: EC = null;
 function getCurve() {
     if (!_curve) {
         _curve = new EC('secp256k1');
@@ -26,18 +26,17 @@ function getCurve() {
     return _curve;
 }
 
-
 export class KeyPair {
 
-    readonly privateKey: string;
+    public readonly privateKey: string;
 
-    readonly publicKey: string;
-    readonly compressedPublicKey: string;
+    public readonly publicKey: string;
+    public readonly compressedPublicKey: string;
 
-    readonly publicKeyBytes: Uint8Array;
+    public readonly publicKeyBytes: Uint8Array;
 
     constructor(privateKey: Arrayish | string) {
-        let keyPair = getCurve().keyFromPrivate(arrayify(privateKey));
+        const keyPair = getCurve().keyFromPrivate(arrayify(privateKey));
 
         defineReadOnly(this, 'privateKey', hexlify(keyPair.priv.toArray('be', 32)));
         defineReadOnly(this, 'publicKey', '0x' + keyPair.getPublic(false, 'hex'));
@@ -45,31 +44,31 @@ export class KeyPair {
         defineReadOnly(this, 'publicKeyBytes', keyPair.getPublic().encode(null, true));
     }
 
-    sign(digest: Arrayish | string): Signature {
-        let keyPair = getCurve().keyFromPrivate(arrayify(this.privateKey));
-        let signature = keyPair.sign(arrayify(digest), {canonical: true});
+    public sign(digest: Arrayish | string): Signature {
+        const keyPair = getCurve().keyFromPrivate(arrayify(this.privateKey));
+        const signature = keyPair.sign(arrayify(digest), {canonical: true});
         return {
             recoveryParam: signature.recoveryParam,
             r: hexZeroPad('0x' + signature.r.toString(16), 32),
             s: hexZeroPad('0x' + signature.s.toString(16), 32),
-            v: 27 + signature.recoveryParam
-        }
+            v: 27 + signature.recoveryParam,
+        };
 
     }
 
-    computeSharedSecret(otherKey: Arrayish | string): string {
-        let keyPair = getCurve().keyFromPrivate(arrayify(this.privateKey));
-        let otherKeyPair = getCurve().keyFromPublic(arrayify(computePublicKey(otherKey)));
+    public computeSharedSecret(otherKey: Arrayish | string): string {
+        const keyPair = getCurve().keyFromPrivate(arrayify(this.privateKey));
+        const otherKeyPair = getCurve().keyFromPublic(arrayify(computePublicKey(otherKey)));
         return hexZeroPad('0x' + keyPair.derive(otherKeyPair.getPublic()).toString(16), 32);
     }
 }
 
 export function computePublicKey(key: Arrayish | string, compressed?: boolean): string {
 
-    let bytes = arrayify(key);
+    const bytes = arrayify(key);
 
     if (bytes.length === 32) {
-        let keyPair: KeyPair = new KeyPair(bytes);
+        const keyPair: KeyPair = new KeyPair(bytes);
         if (compressed) {
             return keyPair.compressedPublicKey;
         }
@@ -90,13 +89,13 @@ export function computePublicKey(key: Arrayish | string, compressed?: boolean): 
 
 export function computeAddress(key: Arrayish | string): string {
     // Strip off the leading "0x04"
-    let publicKey = '0x' + computePublicKey(key).slice(4);
+    const publicKey = '0x' + computePublicKey(key).slice(4);
     return getAddress('0x' + keccak256(publicKey).substring(26));
 }
 
 export function recoverPublicKey(digest: Arrayish | string, signature: Signature | string): string {
-    let sig = splitSignature(signature);
-    let rs = { r: arrayify(sig.r), s: arrayify(sig.s) };
+    const sig = splitSignature(signature);
+    const rs = { r: arrayify(sig.r), s: arrayify(sig.s) };
     return '0x' + getCurve().recoverPubKey(arrayify(digest), rs, sig.recoveryParam).encode('hex', false);
 }
 
